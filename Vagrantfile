@@ -67,9 +67,17 @@ Vagrant.configure("2") do |config|
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
     sudo apt-get update
-    sudo apt-get install -y curl build-essential
+    sudo apt-get install -y libasound2 alsa-utils vim git build-essential
+    sudo apt-get install -y git libao-dev libgcrypt11-dev libgnutls28-dev libfaad-dev libmad0-dev libjson0-dev make pkg-config
+    sudo apt-get install -y libavfilter-dev libavformat-dev libswscale-dev libavresample-dev
+    sudo apt-get install -y curl libcurl4-gnutls-dev
     curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
     sudo apt-get install -y nodejs
+    sudo npm set progress=false
+    npm set progress=false
     sudo npm install -g node-sass gulp
+    sudo git clone https://github.com/PromyLOPh/pianobar.git /usr/src/pianobar
+    mkdir -p ~/.config/pianobar
+    mkfifo ~/.config/pianobar/ctl
   SHELL
 end
