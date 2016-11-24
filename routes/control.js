@@ -11,14 +11,25 @@ const act_stationchange = 's';
 const act_voldown = '(';
 const act_volup = ')';
 
+// const fs = require('fs');
+
 function writeCommand(req, command, callback) {
   var fifo = req.app.get('fifo');
-  fifo.write(command + "\n", true, function(err, res){
-    if(err) {
-      console.error('Error: ' + err);
-    }
-    return callback(err, res);
-  });
+
+  try {
+    fifo.write(command, true, function(err){
+      if(err) {
+        console.error('Error sending command (' + command + '): ' + err);
+        return callback(err);
+      }
+
+      return callback();
+    });
+  }
+  catch(ex) {
+    console.error('Exception caught while trying to write command to fifo: ' + ex.message);
+    return callback(new Error(ex.message));
+  }
 }
 
 /* GET home page. */
@@ -37,6 +48,7 @@ router.get('/like', function(req, res, next) {
 });
 
 router.get('/next', function(req, res, next) {
+  console.log('Sending next...');
   writeCommand(req, act_next, function(err) {
     if(err) {
       res.send('Error: ' + err);
