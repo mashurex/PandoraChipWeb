@@ -12,9 +12,9 @@ done < <(grep -e '^\(title\|artist\|album\|stationName\|songStationName\|pRet\|p
 
 case "$1" in
     songstart)
-        echo "$stationName: $title by $artist" > ./current.txt
+        echo "$stationName: $title by $artist" > "$PCW_HOME/current.txt"
         ;;
     *)
-        echo -e "$1" >> ./log.txt
+        echo -e "$1" >> "$PCW_HOME/log.txt"
         ;;
 esac
