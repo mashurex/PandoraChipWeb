@@ -7,7 +7,8 @@ var bodyParser = require('body-parser');
 const FIFO = require('fifo-js');
 var index = require('./routes/index');
 var control = require('./routes/control');
-const FIFO_PATH = '/home/vagrant/.config/pianobar/ctl';
+// const FIFO_PATH = '/home/vagrant/.config/pianobar/ctl';
+var FIFO_PATH = process.env.PCW_CTL_FILE || '/home/chip/.config/pianobar/ctl';
 var fifo = new FIFO(FIFO_PATH);
 
 var app = express();
