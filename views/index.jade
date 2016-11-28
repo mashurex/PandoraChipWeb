@@ -3,3 +3,9 @@ extends layout
 block content
   h1= title
   p Now Playing: #{song}
+  br
+  a(href='javascript:void(0);' data-href='/control/next', class='btn btn-primary async') Skip
+  span &nbsp;&nbsp;
+  a(href='javascript:void(0);' data-href='/control/like', class='btn btn-primary async') Like
+  span &nbsp;&nbsp;
+  a(href='javascript:void(0);' data-href='/control/pause-toggle', class='btn btn-primary async') Pause
