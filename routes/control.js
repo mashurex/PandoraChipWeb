@@ -1,5 +1,7 @@
 var express = require('express');
 var router = express.Router();
+const fs = require('fs');
+const path = require('path');
 
 const act_like = '+';
 const act_next = 'n';
@@ -11,7 +13,8 @@ const act_stationchange = 's';
 const act_voldown = '(';
 const act_volup = ')';
 
-// const fs = require('fs');
+const cwd = path.join(__dirname, '..');
+const CURRENT_TXT = path.join(cwd, 'current.txt');
 
 function writeCommand(req, command, callback) {
   var fifo = req.app.get('fifo');
@@ -66,6 +69,19 @@ router.get('/pause-toggle', function(req, res, next) {
       res.send('ok');
     }
   });
+});
+
+router.get('/current', function(req, res, next) {
+  var contents = 'nothing';
+  try {
+    contents = fs.readFileSync(CURRENT_TXT, 'utf8');
+  }
+  catch(ex) {
+    contents = 'No current song';
+  }
+
+  // TODO:
+  res.json({ channel: '', artist: '', song: contents.trim() });
 });
 
 module.exports = router;

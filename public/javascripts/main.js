@@ -11,19 +11,42 @@ function getAjax(url, success) {
 
 function assignAjaxButtons() {
     var buttons = document.getElementsByClassName('btn async');
-    if(!buttons || buttons.length == 0){ console.log('No buttons'); return; }
+    if(!buttons || buttons.length == 0){ return; }
+
+    for(var i = 0; i < buttons.length; i++) {
+        var button = buttons[i];
+        button.onclick = function() {
+            var href = this.getAttribute('data-href');
+            getAjax(href, function(res){
+                console.log(res);
+            });
+        }
+    }
+}
+
+function assignSkipButtons() {
+    var buttons = document.getElementsByClassName('btn-skip');
+    if(!buttons || buttons.length == 0){ return; }
 
     for(var i = 0; i < buttons.length; i++) {
         var button = buttons[i];
         button.onclick = function() {
             var href = this.getAttribute('data-href');
             getAjax(href, function(){
-                console.log('Success');
+                setTimeout(fetchCurrentSong, 500);
             });
         }
     }
 }
 
+function fetchCurrentSong() {
+    getAjax('/control/current', function(res){
+        var currentSong = document.getElementById('current-song');
+        currentSong.innerText = res.song;
+    });
+}
+
 (function() {
     assignAjaxButtons();
+    assignSkipButtons();
 })();
