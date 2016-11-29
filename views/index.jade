@@ -2,10 +2,9 @@ extends layout
 
 block content
   h1= title
-  p Now Playing:
-    span#current-song #{song}
+  p#now-playing #{song}
   br
-  a(href='javascript:void(0);' data-href='/control/next', class='btn btn-primary btn-skip') Skip
+  a(href='javascript:void(0);' data-href='/control/next', class='btn btn-primary btn-skip async') Skip
   span &nbsp;&nbsp;
   a(href='javascript:void(0);' data-href='/control/like', class='btn btn-primary async') Like
   span &nbsp;&nbsp;

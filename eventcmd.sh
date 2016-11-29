@@ -3,6 +3,9 @@
 title="Unknown"
 artist="Unknown"
 stationName="Unknown"
+album=""
+coverArt=""
+station=""
 
 while read L; do
 	k="`echo "$L" | cut -d '=' -f 1`"
@@ -12,9 +15,18 @@ done < <(grep -e '^\(title\|artist\|album\|stationName\|songStationName\|pRet\|p
 
 case "$1" in
     songstart)
-        echo "$stationName: $title by $artist" > "$PCW_HOME/current.txt"
+        cat > "$PCW_HOME/current.txt" << EOL
+station=${stationName}
+title=${title}
+artist=${artist}
+album=${album}
+coverArt=${coverArt}
+EOL
+        curl -X POST http://localhost:3000/control/songstart
         ;;
     *)
         echo -e "$1" >> "$PCW_HOME/log.txt"
         ;;
 esac
+
+# curl --data "event=${1}&station=${station}&title=${title}&artist=${artist}&album=${album}&coverArt=${coverArt}" http://localhost:3000/control/update

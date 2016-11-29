@@ -7,7 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('pandorachipweb:server');
 var http = require('http');
-
+var url = require('url');
 /**
  * Get port from environment and store in Express.
  */
@@ -28,6 +28,35 @@ var server = http.createServer(app);
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
+
+var WebSocketServer = require('ws').Server;
+var ws = new WebSocketServer({ server: server });
+
+ws.on('connection', function connection(wss) {
+  var location = url.parse(wss.upgradeReq.url, true);
+  console.log('Connection: ' + location);
+  // you might use location.query.access_token to authenticate or share sessions
+  // or ws.upgradeReq.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
+
+  wss.on('close', function () {
+    console.log('closed');
+
+  });
+
+  wss.on('message', function incoming(message) {
+    console.log('received: %s', message);
+  });
+});
+
+ws.broadcast = function broadcast(data) {
+  console.log('Broadcasting...');
+  console.log(data);
+  ws.clients.forEach(function each(client) {
+    client.send(data);
+  });
+};
+
+app.set('ws', ws);
 
 /**
  * Normalize a port into a number, string, or false.
