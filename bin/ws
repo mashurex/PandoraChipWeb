@@ -1,0 +1,204 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+const debug = require('debug')('pcw');
+const http = require('http');
+const url = require('url');
+const path = require('path');
+const fs = require('fs');
+const WebSocketServer = require('ws').Server;
+const port = normalizePort(process.env.PORT || '3000');
+const PianoBar = require('../lib/PianoBar');
+var pb = new PianoBar();
+var wss;
+
+var generateGUID = function guid() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+        .toString(16)
+        .substring(1);
+  }
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+         s4() + '-' + s4() + s4() + s4();
+};
+
+var broadcastUpdate = function broadcastUpdate() {
+  pb.readStats(function(err, stats){
+    if(err) {
+      console.error(err);
+      return;
+    }
+
+    let data = {
+      ts: Date.now().toString(),
+      stats: stats
+    };
+
+    wss.broadcast(JSON.stringify(data));
+  });
+};
+
+/**
+ * Create HTTP server.
+ */
+var server = http.createServer(function(req, res) {
+  let reqUrl = req.url;
+  let method = req.method;
+
+  let found = false;
+  let statusCode = 200;
+  let resBody = '';
+
+  if(method === 'POST') {
+    if(reqUrl === '/songstart') {
+      resBody = 'ok';
+      found = true;
+      broadcastUpdate();
+    }
+  }
+
+  if(!found) {
+    res.statusCode = 404;
+  } else {
+    res.statusCode = statusCode;
+  }
+
+  debug(res.statusCode + ' ' + method + ': ' + reqUrl);
+
+  res.write(resBody);
+  return res.end();
+});
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+wss = new WebSocketServer({ server: server });
+wss.broadcast = function broadcast(data) {
+  debug('Broadcasting: ', data);
+  wss.clients.forEach(function each(client) {
+    client.send(data);
+  });
+};
+
+wss.on('connection', function connection(ws) {
+  var location = url.parse(ws.upgradeReq.url, true);
+  debug('WS Client Connection:', location);
+
+  // you might use location.query.access_token to authenticate or share sessions
+  // or ws.upgradeReq.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
+
+  var guid = generateGUID();
+  ws.send(JSON.stringify({
+        event: 'connected',
+        id: guid,
+        ts: Date.now().toString(),
+        stations: pb.readStationsSync()
+  }));
+
+  ws.on('open', function open() {
+    // console.log('connected');
+    ws.send(Date.now().toString(), {mask: true});
+  });
+
+  ws.on('close', function () {
+    // console.log('closed');
+  });
+
+  ws.on('message', function(data, flags) {
+    let json = JSON.parse(data);
+    let event = json.event;
+
+    debug('WS Message: ', json);
+
+    if(event === 'current-status') {
+      var stats = pb.readStatsSync();
+      ws.send(JSON.stringify({ stats: stats }));
+    }
+    else if(event === 'skip') {
+      pb.skip(function(err){
+        if(err){ console.error(err); }
+      });
+    }
+    else if(event === 'like') {
+      pb.like(function(err){
+        if(err){ console.error(err); }
+      });
+    }
+    else if(event === 'pause-toggle') {
+      pb.pauseToggle(function(err){
+        if(err){ console.error(err); }
+      });
+    }
+    else if(event === 'change-station') {
+      let station = json.data.stationName;
+      if(!station) { console.error('No station to change to', json); return; }
+      pb.changeStation(station, function(err){
+        if(err){ console.error(err); }
+      });
+    }
+  });
+});
+
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}

@@ -1,5 +1,5 @@
-var express = require('express');
-var router = express.Router();
+// var express = require('express');
+// var router = express.Router();
 const fs = require('fs');
 const path = require('path');
 
@@ -35,62 +35,6 @@ function writeCommand(req, command, callback) {
   }
 }
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
-
-router.post('/update', function(req, res, next){
-  // TODO: Push updates
-  console.log(req.body);
-  console.log('Event: ' + req.body.event);
-  var ws = req.app.get('ws');
-  if(ws) {
-    console.log('Broadcasting...');
-    ws.broadcast(JSON.stringify(req.body));
-  }
-  res.send('ok');
-});
-
-router.post('/songstart', function(req, res, next){
-  var currentStatus = readCurrentFile(req.app);
-  var ws = req.app.get('ws');
-  if(ws) {
-    ws.broadcast(JSON.stringify(currentStatus));
-  }
-  res.send('ok');
-});
-
-router.get('/like', function(req, res, next) {
-  writeCommand(req, act_like, function(err) {
-    if(err) {
-      res.send('Error: ' + err);
-    } else {
-      res.send('ok');
-    }
-  });
-});
-
-router.get('/next', function(req, res, next) {
-  console.log('Sending next...');
-  writeCommand(req, act_next, function(err) {
-    if(err) {
-      res.send('Error: ' + err);
-    } else {
-      res.send('ok');
-    }
-  });
-});
-
-router.get('/pause-toggle', function(req, res, next) {
-  writeCommand(req, act_pause, function(err) {
-    if(err) {
-      res.send('Error: ' + err);
-    } else {
-      res.send('ok');
-    }
-  });
-});
 
 function readCurrentFile(app) {
   var last = app.get('lastStatusTime') || 0;
@@ -131,8 +75,66 @@ function readCurrentFile(app) {
   return currentStatus;
 }
 
-router.get('/current', function(req, res, next) {
-  res.json(readCurrentFile(req.app));
-});
+function init(dispatcher) {
+  /* GET home page. */
+  dispatcher.onGet('/', function (req, res, next) {
+    res.render('index', {title: 'Express'});
+  });
 
-module.exports = router;
+  dispatcher.onPost('/update', function (req, res) {
+    // TODO: Don't just take the post body and broadcast it
+    var ws = req.app.get('ws');
+    if (ws) {
+      console.log('Broadcasting...');
+      ws.broadcast(JSON.stringify(req.body));
+    }
+    res.send('ok');
+  });
+
+  dispatcher.onPost('/songstart', function (req, res) {
+    var currentStatus = readCurrentFile(req.app);
+    var ws = req.app.get('ws');
+    if (ws) {
+      ws.broadcast(JSON.stringify(currentStatus));
+    }
+    res.send('ok');
+  });
+
+  dispatcher.onGet('/like', function (req, res) {
+    writeCommand(req, act_like, function (err) {
+      if (err) {
+        res.send('Error: ' + err);
+      } else {
+        res.send('ok');
+      }
+    });
+  });
+
+  dispatcher.get('/next', function (req, res) {
+    console.log('Sending next...');
+    writeCommand(req, act_next, function (err) {
+      if (err) {
+        res.send('Error: ' + err);
+      } else {
+        res.send('ok');
+      }
+    });
+  });
+
+  dispatcher.get('/pause-toggle', function (req, res) {
+    writeCommand(req, act_pause, function (err) {
+      if (err) {
+        res.send('Error: ' + err);
+      } else {
+        res.send('ok');
+      }
+    });
+  });
+
+  dispatcher.get('/current', function(req, res) {
+    res.json(readCurrentFile(req.app));
+  });
+}
+
+
+exports = module.exports = { init: init };

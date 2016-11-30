@@ -7,16 +7,7 @@ const CURRENT_TXT = path.join(cwd, 'current.txt');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  var contents = 'nothing';
-  try {
-        contents = fs.readFileSync(CURRENT_TXT, 'utf8');
-        console.log(contents);
-  }
-  catch(ex) {
-    contents = 'No current song';
-  }
-
-  res.render('index', {title: 'Now Playing', song: contents});
+  res.render('index', {title: 'Now Playing', song: 'Updating...'});
 });
 
 module.exports = router;
