@@ -58,7 +58,11 @@ var startPianoBar = function startPianoBar() {
 
   pianobar.on('exit', function(code){
     if(code !== 0){ console.error('Could not start pianobar process'); }
-    else { debug('pianobar started'); }
+    else {
+      debug('pianobar started');
+      pb.stopped = false;
+      pb.paused = false;
+    }
   });
 };
 
@@ -79,7 +83,11 @@ var stopPianoBar = function stopPianoBar() {
 
     pianobar.on('exit', function(code){
       if(code !== 0){ console.error('Could not stop pianobar process'); }
-      else { debug('pianobar stopped'); }
+      else {
+        debug('pianobar stopped');
+        pb.stopped = true;
+        pb.paused = true;
+      }
     });
   }
   catch(ex) {
@@ -189,11 +197,23 @@ wss.on('connection', function connection(ws) {
         if(err){ console.error(err); }
       });
     }
+    else if(event === 'next-station') {
+      pb.nextStation(function(err){
+        if(err){ console.error(err); }
+      });
+    }
     else if(event === 'start') {
       startPianoBar();
     }
     else if(event === 'stop') {
       stopPianoBar();
+    }
+    else if(event === 'start-stop') {
+      if(pb.stopped) {
+        startPianoBar();
+      } else {
+        stopPianoBar();
+      }
     }
   });
 });

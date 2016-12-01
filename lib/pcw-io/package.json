@@ -1,0 +1,11 @@
+{
+  "name": "pcw-io",
+  "version": "0.0.1-ALPHA",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "chip-io": "^2.0.2",
+    "johnny-five": "^0.10.6",
+    "ws": "^1.1.1"
+  }
+}
