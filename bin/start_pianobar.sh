@@ -7,7 +7,7 @@ is_running(){
 launch(){
     if ! is_running
     then
-        nohup pianobar & 2>&1 &disown
+        nohup pianobar > /dev/null 2>&1 & echo $! > "${PCW_HOME}/pianobar.pid"
         sleep 1
     fi
 }

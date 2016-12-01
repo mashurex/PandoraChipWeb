@@ -26,7 +26,7 @@ var generateGUID = function guid() {
          s4() + '-' + s4() + s4() + s4();
 };
 
-startPianobar();
+startPianoBar();
 
 var broadcastUpdate = function broadcastUpdate() {
   pb.readStats(function(err, stats){
@@ -149,7 +149,8 @@ wss.on('connection', function connection(ws) {
   });
 });
 
-function startPianobar() {
+function startPianoBar() {
+  debug('Starting PianoBar process...');
   let pianobar = childProcess.exec('bash ' + path.join(__dirname, 'start_pianobar.sh'), function(error, stdout, stderr){
     if(error) {
       debug(error.stack);
@@ -158,6 +159,19 @@ function startPianobar() {
 
   pianobar.on('exit', function(code){
     debug('Pianobar Start Exit Code: ' + code);
+  });
+}
+
+function stopPianoBar() {
+  debug('Stopping PianoBar process...');
+  let pianobar = childProcess.exec('bash ' + path.join(__dirname, 'stop_pianobar.sh'), function(error, stdout, stderr){
+    if(error) {
+      debug(error.stack);
+    }
+  });
+
+  pianobar.on('exit', function(code){
+    debug('Pianobar Stop Exit Code: ' + code);
   });
 }
 
@@ -217,3 +231,26 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
+
+function shutdown() {
+  stopPianoBar();
+}
+
+process.on('exit', function(){
+  debug('Shutting down...');
+  shutdown();
+  process.exit(0);
+});
+
+process.on('SIGINT', function(){
+  debug('Shutting down due to interruption...');
+  shutdown();
+  process.exit(1);
+});
+
+process.on('uncaughtException', function(e){
+  console.error('Shutting down due to uncaught exception...');
+  console.error(e.stack);
+  shutdown();
+  process.exit(100);
+});
