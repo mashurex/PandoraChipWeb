@@ -1,4 +1,8 @@
-(function() {
+var $ = jQuery = require('jquery');
+var tether = require('tether');
+var bootstrap = require('bootstrap');
+
+(function($) {
     var currentStatus = {
         album: '',
         title: '',
@@ -109,30 +113,63 @@
         sendMessage('like');
     }
 
+    function sendStart() {
+        sendMessage('start');
+    }
+
+    function sendStop() {
+        sendMessage('stop');
+    }
+
     function requestCurrentStatus() {
         sendMessage('current-status');
     }
 
     function updateStats(stats) {
         currentStatus = stats;
-        var nowPlayingElm = document.getElementById('now-playing');
-        var npContainerElm  = document.getElementById('np-container');
+        // var nowPlayingElm = document.getElementById('now-playing');
+        // var npContainerElm  = document.getElementById('np-container');
+        //
+        // var images = npContainerElm.getElementsByTagName('img');
+        //
+        // if(images && images.length > 0) {
+        //     for(var i = 0; i < images.length; i++) {
+        //         npContainerElm.removeChild(images[i]);
+        //     }
+        // }
+        // nowPlayingElm.innerText = stats.station + ': ' + stats.title + ' by ' + stats.artist;
+        //
+        // if(stats.coverArt) {
+        //     var img = document.createElement('img');
+        //     img.setAttribute('src', stats.coverArt);
+        //     img.setAttribute('class', 'cover-art');
+        //     npContainerElm.appendChild(img);
+        // }
 
-        var images = npContainerElm.getElementsByTagName('img');
+        $("[data-value='artist']").each(function(){
+            $(this).text(currentStatus.artist);
+        });
 
-        if(images && images.length > 0) {
-            for(var i = 0; i < images.length; i++) {
-                npContainerElm.removeChild(images[i]);
+        $("[data-value='album']").each(function(){
+            $(this).text(currentStatus.album);
+        });
+
+        $("[data-value='title']").each(function(){
+            $(this).text(currentStatus.title);
+        });
+
+        $("[data-value='station']").each(function(){
+            $(this).text(currentStatus.station);
+        });
+
+        $("img.cover-art").each(function(){
+            if(currentStatus.coverArt) {
+                $(this).attr('src', currentStatus.coverArt);
             }
-        }
-        nowPlayingElm.innerText = stats.station + ': ' + stats.title + ' by ' + stats.artist;
-
-        if(stats.coverArt) {
-            var img = document.createElement('img');
-            img.setAttribute('src', stats.coverArt);
-            img.setAttribute('class', 'cover-art');
-            npContainerElm.appendChild(img);
-        }
+            else {
+                $(this).attr('src', 'http://placekitten.com/g/500/500')
+            }
+        });
     }
 
     function assignControlButtons() {
@@ -141,12 +178,17 @@
 
         for(var i = 0; i < buttons.length; i++) {
             var button = buttons[i];
-            button.onclick = function() {
+            button.onclick = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+
                 var self = this;
                 var action = self.getAttribute('data-action');
                 if(action == 'pause'){ sendPause(); }
                 else if(action == 'like'){ sendLike(); }
                 else if(action == 'skip'){ sendSkip(); }
+                else if(action == 'start'){ sendStart(); }
+                else if(action == 'stop'){ sendStop(); }
                 else {
                     console.log('Unknown action: ' + action);
                 }
@@ -155,4 +197,4 @@
     }
 
     assignControlButtons();
-})();
+})(jQuery || window.jQuery);

@@ -8,6 +8,7 @@ const PATHS = {
     build: path.join(__dirname, 'build')
 };
 
+//noinspection JSUnresolvedFunction
 module.exports = {
     // cache: true,
     debug: true,
@@ -17,12 +18,17 @@ module.exports = {
     },
     resolve: {
         modulesDirectories: ['node_modules'],
+        alias: {
+            jquery: 'jquery/dist/jquery',
+            tether: 'tether'
+        }
     },
     output: {
         path: path.join(PATHS.build, 'js'),
         publicPath: './js/',
         filename: '[name].js',
-        sourceMapFilename: '[file].map'
+        sourceMapFilename: '[file].map',
+        libraryTarget: 'var'
     },
     module: {
         loaders: [{
@@ -35,6 +41,15 @@ module.exports = {
         presets: ['latest'],
         plugins: ['transform-runtime']
     },
+    plugins: [
+        new webpack.ProvidePlugin({
+            $: 'jquery',
+            jQuery: 'jquery',
+            'window.jQuery': 'jquery',
+            Tether: 'tether',
+            'window.Tether': 'tether'
+        })
+    ],
     devServer: {
         inline: true,
         headers: {
