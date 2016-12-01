@@ -4,15 +4,17 @@ const five = require('johnny-five');
 const chipio = require('chip-io');
 const WebSocket = require('ws');
 const debug = require('debug')('pcw-io');
+
+const WS_URL = process.env.PCW_WS_URL || 'ws://localhost:3000';
+const PCW_DEBUG = process.env.PCW_DEBUG == 1;
+const PCW_REPL = process.env.PCW_REPL == 1;
+
 const BTN_PINS = ['XIO-P1','XIO-P3','XIO-P5'];
 const BTN_PIN_PLAY_PAUSE = BTN_PINS[0];
 const BTN_PIN_SKIP_LIKE = BTN_PINS[1];
 const BTN_PIN_STATION = BTN_PINS[2];
-const WS_URL = 'ws://localhost:3000';
-const PCW_DEBUG = process.env.PCW_DEBUG == 1;
 
 var ws;
-
 if(PCW_DEBUG === true) {
     ws = {
         send: function(message){ console.log('Sending: ' + message); }
@@ -27,11 +29,16 @@ if(PCW_DEBUG === true) {
     ws.on('message', function(data, flags) {
         debug('Message received: ', data);
     });
+
+    ws.on('close', function(){
+        console.error('WebSocket closed!');
+    });
 }
 
 
 var board = new five.Board({
-    io: new chipio()
+    io: new chipio(),
+    repl: PCW_REPL
 });
 
 board.on('ready', function() {

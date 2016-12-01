@@ -4,7 +4,7 @@ action=$1
 export DEBUG="pcw pcw-io"
 
 if [ -z "${PCW_IO_HOME}" ]; then
-    PCW_IO_HOME="${HOME}/pcw-io"
+    PCW_IO_HOME="${PCW_HOME}/lib//pcw-io"
 fi
 
 if [ ! -d "${PCW_IO_HOME}" ]; then
@@ -15,7 +15,7 @@ fi
 cd "${PCW_IO_HOME}"
 
 start() {
-    nohup /usr/bin/node pcw-io.js > pcw-io.log 2>&1&
+    nohup /usr/bin/node bin/pcw-io > pcw-io.log 2>&1&
     echo $! > pcw-io.pid
     sleep 1
 }
