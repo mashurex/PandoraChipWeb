@@ -125,26 +125,16 @@ var bootstrap = require('bootstrap');
         sendMessage('current-status');
     }
 
+    function getStationId(title) {
+        for(var i = 0; i < stations.length; i++) {
+            if(stations[i].title === title){ return stations[i].name; }
+        }
+
+        return null;
+    }
+
     function updateStats(stats) {
         currentStatus = stats;
-        // var nowPlayingElm = document.getElementById('now-playing');
-        // var npContainerElm  = document.getElementById('np-container');
-        //
-        // var images = npContainerElm.getElementsByTagName('img');
-        //
-        // if(images && images.length > 0) {
-        //     for(var i = 0; i < images.length; i++) {
-        //         npContainerElm.removeChild(images[i]);
-        //     }
-        // }
-        // nowPlayingElm.innerText = stats.station + ': ' + stats.title + ' by ' + stats.artist;
-        //
-        // if(stats.coverArt) {
-        //     var img = document.createElement('img');
-        //     img.setAttribute('src', stats.coverArt);
-        //     img.setAttribute('class', 'cover-art');
-        //     npContainerElm.appendChild(img);
-        // }
 
         $("[data-value='artist']").each(function(){
             $(this).text(currentStatus.artist);
@@ -160,6 +150,12 @@ var bootstrap = require('bootstrap');
 
         $("[data-value='station']").each(function(){
             $(this).text(currentStatus.station);
+        });
+
+        let stationId = getStationId(currentStatus.station);
+        $(".station-list li.station").removeClass('active');
+        $(".station-list li.station a[data-station='" + stationId + "'").each(function(){
+            $(this).parent().addClass('active');
         });
 
         $("img.cover-art").each(function(){
