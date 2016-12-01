@@ -65,7 +65,7 @@ function wsConnect() {
         if(WS_RECONNECT_TRIES <= 5) {
             setTimeout(wsConnect, WS_RECONNECT_INTERVAL * WS_RECONNECT_TRIES);
         } else {
-            console.error('Try[%s]: Cannot connect to PCW WebSocket Server, exiting...', WS_RECONNECT_TRIES);
+            console.error('Cannot connect to PCW WebSocket Server after max tries (%s), exiting...', (WS_RECONNECT_TRIES - 1));
             process.exit(1);
         }
     });
