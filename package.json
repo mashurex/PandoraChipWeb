@@ -3,7 +3,10 @@
   "version": "0.0.1-ALPHA",
   "private": true,
   "scripts": {
-    "start": "node ./bin/ws"
+    "start": "bash scripts/pcw.sh start",
+    "stop": "bash scripts/pcw.sh stop",
+    "restart": "bash scripts/pcw.sh restart",
+    "status": "bash scripts/pcw.sh status"
   },
   "dependencies": {
     "bootstrap": "^4.0.0-alpha.5",

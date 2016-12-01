@@ -74,7 +74,7 @@ if [ -z "$PCW_HOME" ]; then
 fi
 
 if [ -z "$DEBUG" ]; then
-    export DEBUG="pcw"
+    export DEBUG="pcw pcw-io"
 fi
 
 if [ -z "$PCW_CTL_FILE" ]; then

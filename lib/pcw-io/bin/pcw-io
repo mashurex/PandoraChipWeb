@@ -3,36 +3,45 @@
 const five = require('johnny-five');
 const chipio = require('chip-io');
 const WebSocket = require('ws');
-
+const debug = require('debug')('pcw-io');
 const BTN_PINS = ['XIO-P1','XIO-P3','XIO-P5'];
 const BTN_PIN_PLAY_PAUSE = BTN_PINS[0];
 const BTN_PIN_SKIP_LIKE = BTN_PINS[1];
 const BTN_PIN_STATION = BTN_PINS[2];
 const WS_URL = 'ws://localhost:3000';
+const PCW_DEBUG = process.env.PCW_DEBUG == 1;
 
-const ws = new WebSocket(WS_URL);
+var ws;
 
-ws.on('open', function open(){
-    console.log('WebSocket opened to ' + WS_URL);
-});
+if(PCW_DEBUG === true) {
+    ws = {
+        send: function(message){ console.log('Sending: ' + message); }
+    };
+} else {
+    ws = new WebSocket(WS_URL);
 
-ws.on('message', function(data, flags) {
-    console.log('Message received: ', data);
-});
+    ws.on('open', function open(){
+        debug('WebSocket opened to ' + WS_URL);
+    });
+
+    ws.on('message', function(data, flags) {
+        debug('Message received: ', data);
+    });
+}
+
 
 var board = new five.Board({
     io: new chipio()
 });
 
 board.on('ready', function() {
-    console.log('Board Ready');
+    debug('Board Ready');
     var btnPlayPause = makePlayPauseButton();
     var btnSkipLike = makeSkipLikeButton();
     var btnStation = makeStationButton();
 
     this.on('exit', function() {
         console.log('bye bye.');
-        // button.off();
     });
 });
 
@@ -45,21 +54,23 @@ function makePlayPauseButton() {
 
     btn.held = false;
     btn.on('down', function playPauseDown(){
-        console.log('Play/Pause down');
+        debug('Play/Pause down');
     });
 
     btn.on('hold', function playPauseHold(){
-        this.held = true;
-        console.log('Play/Pause hold');
+        if(!this.held) {
+            this.held = true;
+            debug('Play/Pause hold');
+        }
     });
 
     btn.on('up', function playPauseUp(){
         if(this.held) {
             this.held = false;
-            console.log('Start/Stop Toggle...');
+            debug('Start/Stop Toggle...');
             ws.send(JSON.stringify({ event: 'start-stop' }));
         } else {
-            console.log('Pause Toggle...');
+            debug('Pause Toggle...');
             ws.send(JSON.stringify({ event: 'pause-toggle', }));
         }
     });
@@ -70,21 +81,23 @@ function makeSkipLikeButton() {
 
     btn.held = false;
     btn.on('down', function skipLikeDown(){
-        console.log('Skip/Like down');
+        debug('Skip/Like down');
     });
 
     btn.on('hold', function skipLikeHold(){
-        this.held = true;
-        console.log('Skip/Like hold');
+        if(!this.held) {
+            this.held = true;
+            debug('Skip/Like hold');
+        }
     });
 
     btn.on('up', function skipLikeUp(){
         if(this.held) {
             this.held = false;
-            console.log('Liking...');
+            debug('Liking...');
             ws.send(JSON.stringify({ event: 'like' }));
         } else {
-            console.log('Skipping...');
+            debug('Skipping...');
             ws.send(JSON.stringify({ event: 'skip', }));
         }
     });
@@ -99,17 +112,19 @@ function makeStationButton() {
     });
 
     btn.on('hold', function stationHold(){
-        this.held = true;
-        console.log('Station hold');
+        if(!this.held) {
+            this.held = true;
+            console.log('Station hold');
+        }
     });
 
     btn.on('up', function stationUp(){
         if(this.held) {
             this.held = false;
-            console.log('Banning...');
+            debug('Banning...');
             ws.send(JSON.stringify({ event: 'ban' }));
         } else {
-            console.log('Next Station...');
+            debug('Next Station...');
             ws.send(JSON.stringify({ event: 'station-next' }));
         }
     });
