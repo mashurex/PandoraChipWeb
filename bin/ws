@@ -12,6 +12,7 @@ const WebSocketServer = require('ws').Server;
 const port = normalizePort(process.env.PORT || '3000');
 const PianoBar = require('../lib/PianoBar');
 const childProcess = require('child_process');
+const BIN_DIR = path.join(__dirname);
 
 var pb = new PianoBar();
 var wss;
@@ -46,7 +47,7 @@ var broadcastUpdate = function broadcastUpdate() {
 
 var startPianoBar = function startPianoBar() {
   debug('Starting pianobar...');
-  var command = 'bash ' + path.join(__dirname, 'pbctl.sh') + ' start';
+  var command = 'bash ' + path.join(BIN_DIR, 'pbctl.sh') + ' start';
   let pianobar = childProcess.exec(command, function(error, stdout, stderr){
     if(stdout){ process.stdout.write(stdout); }
     if(stderr){ process.stderr.write(stderr); }
@@ -64,7 +65,7 @@ var startPianoBar = function startPianoBar() {
 var stopPianoBar = function stopPianoBar() {
   debug('Stopping pianobar...');
   try {
-    var command = 'bash ' + path.join(__dirname, 'pbctl.sh') + ' stop';
+    var command = 'bash ' + path.join(BIN_DIR, 'pbctl.sh') + ' stop';
     debug(command);
     let pianobar = childProcess.exec(command,
        function (error, stdout, stderr) {
