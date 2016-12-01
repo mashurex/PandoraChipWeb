@@ -7,10 +7,16 @@ album=""
 coverArt=""
 stations=""
 
+if [ -z "${PCW_HOME}" ]; then
+    echo -e "ERROR: PCW_HOME is NOT set, aborting..."
+    exit 1
+fi
+
 while read L; do
 	k="`echo "$L" | cut -d '=' -f 1`"
 	v="`echo "$L" | cut -d '=' -f 2`"
 	export "$k=$v"
+	# Build up stations list of station1,station2,etc...
 	if echo "$k" | grep -q '^station[0-9]\{1,\}$'; then
 	    stations="${stations};${k}|${v}"
 	fi
@@ -18,17 +24,18 @@ done < <(grep -e '^\(title\|artist\|album\|stationName\|songStationName\|pRet\|p
 
 case "$1" in
     songstart)
-        cat > "$PCW_HOME/current.txt" << EOL
+        cat > "${PCW_HOME}/current.txt" << EOL
 station=${stationName}
 title=${title}
 artist=${artist}
 album=${album}
 coverArt=${coverArt}
 EOL
-        echo -e "$stations" > "$PCW_HOME/stations.txt"
+        echo -e "$stations" > "${PCW_HOME}/stations.txt"
         curl -X POST http://localhost:3000/songstart
         ;;
     *)
-        echo -e "$1" >> "$PCW_HOME/log.txt"
+        # echo -e "$1" >> "$PCW_HOME/log.txt"
+        # Do nothing
         ;;
 esac

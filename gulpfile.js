@@ -7,6 +7,7 @@ const path = require('path');
 const sass = require('gulp-sass');
 const debug = require('gulp-debug');
 const webpack = require('webpack');
+const webpack_stream = require('webpack-stream');
 const webpackConfig = require('./webpack.config');
 const livereload = require('gulp-livereload');
 const WebpackDevServer = require("webpack-dev-server");
@@ -77,6 +78,7 @@ gulp.task('dev:views', function(){
 gulp.task('dev:js', function(){
     return gulp.src(CONFIG.paths.src.js + '/**/*.js')
         .pipe(debug({ title: 'JavaScript'}))
+        .pipe(webpack_stream(webpackConfig))
         .pipe(gulp.dest(CONFIG.paths.build.js))
         .pipe(livereload());
 });

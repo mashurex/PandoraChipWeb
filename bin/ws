@@ -26,7 +26,7 @@ var generateGUID = function guid() {
          s4() + '-' + s4() + s4() + s4();
 };
 
-startPianoBar();
+// startPianoBar();
 
 var broadcastUpdate = function broadcastUpdate() {
   pb.readStats(function(err, stats){
@@ -42,6 +42,49 @@ var broadcastUpdate = function broadcastUpdate() {
 
     wss.broadcast(JSON.stringify(data));
   });
+};
+
+var startPianoBar = function startPianoBar() {
+  debug('Starting pianobar...');
+  var command = 'bash ' + path.join(__dirname, 'pbctl.sh') + ' start';
+  let pianobar = childProcess.exec(command, function(error, stdout, stderr){
+    if(stdout){ process.stdout.write(stdout); }
+    if(stderr){ process.stderr.write(stderr); }
+    if(error) {
+      console.error(error.message);
+    }
+  });
+
+  pianobar.on('exit', function(code){
+    if(code !== 0){ console.error('Could not start pianobar process'); }
+    else { debug('pianobar started'); }
+  });
+};
+
+var stopPianoBar = function stopPianoBar() {
+  debug('Stopping pianobar...');
+  try {
+    var command = 'bash ' + path.join(__dirname, 'pbctl.sh') + ' stop';
+    debug(command);
+    let pianobar = childProcess.exec(command,
+       function (error, stdout, stderr) {
+
+         if(stdout){ process.stdout.write(stdout); }
+         if(stderr){ process.stderr.write(stderr); }
+         if(error) {
+           console.error(error.message);
+         }
+       });
+
+    pianobar.on('exit', function(code){
+      if(code !== 0){ console.error('Could not stop pianobar process'); }
+      else { debug('pianobar stopped'); }
+    });
+  }
+  catch(ex) {
+    console.error(ex.message);
+    debug(ex);
+  }
 };
 
 /**
@@ -106,12 +149,11 @@ wss.on('connection', function connection(ws) {
   }));
 
   ws.on('open', function open() {
-    // console.log('connected');
-    ws.send(Date.now().toString(), {mask: true});
+    ws.send(Date.now().toString(), { mask: true });
   });
 
   ws.on('close', function () {
-    // console.log('closed');
+
   });
 
   ws.on('message', function(data, flags) {
@@ -146,34 +188,14 @@ wss.on('connection', function connection(ws) {
         if(err){ console.error(err); }
       });
     }
+    else if(event === 'start') {
+      startPianoBar();
+    }
+    else if(event === 'stop') {
+      stopPianoBar();
+    }
   });
 });
-
-function startPianoBar() {
-  debug('Starting PianoBar process...');
-  let pianobar = childProcess.exec('bash ' + path.join(__dirname, 'start_pianobar.sh'), function(error, stdout, stderr){
-    if(error) {
-      debug(error.stack);
-    }
-  });
-
-  pianobar.on('exit', function(code){
-    debug('Pianobar Start Exit Code: ' + code);
-  });
-}
-
-function stopPianoBar() {
-  debug('Stopping PianoBar process...');
-  let pianobar = childProcess.exec('bash ' + path.join(__dirname, 'stop_pianobar.sh'), function(error, stdout, stderr){
-    if(error) {
-      debug(error.stack);
-    }
-  });
-
-  pianobar.on('exit', function(code){
-    debug('Pianobar Stop Exit Code: ' + code);
-  });
-}
 
 /**
  * Normalize a port into a number, string, or false.
@@ -245,12 +267,12 @@ process.on('exit', function(){
 process.on('SIGINT', function(){
   debug('Shutting down due to interruption...');
   shutdown();
-  process.exit(1);
+  process.exit(0);
 });
 
 process.on('uncaughtException', function(e){
   console.error('Shutting down due to uncaught exception...');
+  console.error(e.message);
   console.error(e.stack);
-  shutdown();
-  process.exit(100);
+  process.abort();
 });
