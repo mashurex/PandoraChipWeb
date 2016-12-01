@@ -11,6 +11,8 @@ const fs = require('fs');
 const WebSocketServer = require('ws').Server;
 const port = normalizePort(process.env.PORT || '3000');
 const PianoBar = require('../lib/PianoBar');
+const childProcess = require('child_process');
+
 var pb = new PianoBar();
 var wss;
 
@@ -23,6 +25,8 @@ var generateGUID = function guid() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
          s4() + '-' + s4() + s4() + s4();
 };
+
+startPianobar();
 
 var broadcastUpdate = function broadcastUpdate() {
   pb.readStats(function(err, stats){
@@ -145,6 +149,17 @@ wss.on('connection', function connection(ws) {
   });
 });
 
+function startPianobar() {
+  let pianobar = childProcess.exec('bash ' + path.join(__dirname, 'start_pianobar.sh'), function(error, stdout, stderr){
+    if(error) {
+      debug(error.stack);
+    }
+  });
+
+  pianobar.on('exit', function(code){
+    debug('Pianobar Start Exit Code: ' + code);
+  });
+}
 
 /**
  * Normalize a port into a number, string, or false.

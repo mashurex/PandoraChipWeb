@@ -43,3 +43,4 @@ jspm_packages
 current.txt
 log.txt
 /build
+/bin/nohup.out
