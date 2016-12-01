@@ -6,6 +6,7 @@ const WebSocket = require('ws');
 const debug = require('debug')('pcw-io');
 
 const WS_URL = process.env.PCW_WS_URL || 'ws://localhost:3000';
+const WS_RECONNECT_INTERVAL = 1000;
 const PCW_DEBUG = process.env.PCW_DEBUG == 1;
 const PCW_REPL = process.env.PCW_REPL == 1;
 
@@ -13,6 +14,7 @@ const BTN_PINS = ['XIO-P1','XIO-P3','XIO-P5'];
 const BTN_PIN_PLAY_PAUSE = BTN_PINS[0];
 const BTN_PIN_SKIP_LIKE = BTN_PINS[1];
 const BTN_PIN_STATION = BTN_PINS[2];
+var WS_RECONNECT_TRIES = 0;
 
 var ws;
 if(PCW_DEBUG === true) {
@@ -20,19 +22,7 @@ if(PCW_DEBUG === true) {
         send: function(message){ console.log('Sending: ' + message); }
     };
 } else {
-    ws = new WebSocket(WS_URL);
-
-    ws.on('open', function open(){
-        debug('WebSocket opened to ' + WS_URL);
-    });
-
-    ws.on('message', function(data, flags) {
-        debug('Message received: ', data);
-    });
-
-    ws.on('close', function(){
-        console.error('WebSocket closed!');
-    });
+    wsConnect();
 }
 
 
@@ -52,6 +42,35 @@ board.on('ready', function() {
     });
 });
 
+function wsConnect() {
+    ws = new WebSocket(WS_URL);
+
+    ws.on('open', function open(){
+        debug('WebSocket opened to ' + WS_URL);
+        WS_RECONNECT_TRIES = 0;
+    });
+
+    ws.on('message', function(data, flags) {
+        debug('Message received: ', data);
+    });
+
+    ws.on('error', function(err) {
+        console.error('WebSocket Error: ', err);
+    });
+
+    ws.on('close', function(){
+        console.error('WebSocket closed!');
+        WS_RECONNECT_TRIES++;
+
+        if(WS_RECONNECT_TRIES <= 5) {
+            setTimeout(wsConnect, WS_RECONNECT_INTERVAL * WS_RECONNECT_TRIES);
+        } else {
+            console.error('Try[%s]: Cannot connect to PCW WebSocket Server, exiting...', WS_RECONNECT_TRIES);
+            process.exit(1);
+        }
+    });
+
+}
 function makeButton(pin) {
     return new five.Button(pin);
 }
