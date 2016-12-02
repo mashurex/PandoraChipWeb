@@ -55,7 +55,6 @@ function wsConnect() {
 
     ws.on('message', function(data, flags) {
         debug('Message received: ', data);
-        debug('Flags: ', flags);
     });
 
     ws.on('error', function(err) {
