@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PCW_HOME="`cd "${SCRIPT_DIR}/..";pwd`"
-PCW_IO_HOME="${PCW_HOME}/lib/pcw-io"
+export PCW_HOME="`cd "${SCRIPT_DIR}/..";pwd`"
+export PCW_IO_HOME="${PCW_HOME}/lib/pcw-io"
 USER=$(whoami)
 
 if [ "${USER}" == "root" ]; then
@@ -37,12 +37,8 @@ export PCW_IO_HOME="${PCW_IO_HOME}"
 
 EOL
 
-echo -e "Installing Node/NPM..."
-curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
-sudo apt-get install -y nodejs
-sudo npm set progress=false
-npm set progress=false
-sudo npm install -g node-sass gulp
+echo -e "Stopping NGINX for configuration..."
+sudo service nginx stop
 
 echo -e "Configuring NGINX..."
 cat > /tmp/pcw << EOL
@@ -62,9 +58,20 @@ server {
 }
 
 EOL
+
 sudo mv /tmp/pcw /etc/nginx/sites-available/pcw
+echo -e "Removing default NGINX site link..."
 sudo rm -f /etc/nginx/sites-enabled/default
+echo -e "Installing PCW NGINX site link..."
 sudo ln -s /etc/nginx/sites-available/pcw /etc/nginx/sites-enabled/pcw
+
+
+echo -e "Installing Node/NPM..."
+curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+sudo apt-get install -y nodejs
+npm set progress=false
+sudo npm set progress=false
+sudo npm install -g node-sass gulp
 
 echo -e "Building PCW service..."
 cd "${PCW_HOME}"
@@ -74,8 +81,17 @@ chmod +x bin/ws
 chmod +x bin/*.sh
 chmod +x scripts/*.sh
 
-echo -e "Building PCW IO service..."
+echo -e "Starting NGINX now that the website is built..."
+sudo service nginx start
+
+echo -e "Building PCW I/O service..."
 cd "${PCW_IO_HOME}"
 npm install
 chmod +x bin/pcw-io
 chmod +x bin/*.sh
+
+echo -e "Installing PCW startup scripts to /etc/init.d"
+./install-services.sh "${user}" "${PCW_HOME}" "${PCW_IO_HOME}"
+
+echo -e "PCW will now automatically start on boot, to change this run the uninstall-services.sh script located in this directory"
+echo -e "All done."
