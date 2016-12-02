@@ -8,11 +8,14 @@ var bootstrap = require('bootstrap');
         title: '',
         artist: '',
         coverArt: '',
-        station: ''
+        station: '',
+        paused: false,
+        stopped: true
     };
 
     var stations = [];
     var clientId = 'NOTSET';
+    var isRunning = false;
 
     const host = window.document.location.host.replace(/:.*/, '');
     const ws = new WebSocket('ws://' + host + ':3000');
@@ -21,7 +24,7 @@ var bootstrap = require('bootstrap');
         var data = JSON.parse(event.data);
         if(!data.event){ data.event = 'songstart'; }
 
-        if(data.event === 'songstart' || data.event === 'current-stats'){ updateStats(data.stats); }
+        if(data.event === 'songstart' || data.event === 'current-stats'){ updateStats(data); }
         else if(data.event === 'connected') {
             clientId = data.id;
             updateStations(data.stations);
@@ -101,26 +104,6 @@ var bootstrap = require('bootstrap');
         sendMessage('change-station', { stationName: name });
     }
 
-    function sendSkip() {
-        sendMessage('skip');
-    }
-
-    function sendPause() {
-        sendMessage('pause-toggle');
-    }
-
-    function sendLike() {
-        sendMessage('like');
-    }
-
-    function sendStart() {
-        sendMessage('start');
-    }
-
-    function sendStop() {
-        sendMessage('stop');
-    }
-
     function requestCurrentStatus() {
         sendMessage('current-status');
     }
@@ -133,8 +116,8 @@ var bootstrap = require('bootstrap');
         return null;
     }
 
-    function updateStats(stats) {
-        currentStatus = stats;
+    function updateStats(data) {
+        currentStatus = data.stats;
 
         $("[data-value='artist']").each(function(){
             $(this).text(currentStatus.artist);
@@ -166,6 +149,32 @@ var bootstrap = require('bootstrap');
                 $(this).attr('src', 'http://placekitten.com/g/500/500')
             }
         });
+
+        if(data.running != isRunning) {
+            isRunning = (data.running == true);
+            if(isRunning) {
+                $('#btn-start').addClass('disabled');
+                $('#btn-stop').removeClass('disabled');
+            } else {
+                $('#btn-start').removeClass('disabled');
+                $('#btn-stop').addClass('disabled');
+            }
+
+            if(!isRunning) {
+                $('.controls .btn-control').addClass('disabled');
+            }
+            else {
+                $('.controls .btn-control').removeClass('disabled');
+            }
+        }
+
+        if(isRunning) {
+            if(currentStatus.paused) {
+                $('#btn-pause').text('Play');
+            } else {
+                $('#btn-pause').text('Pause');
+            }
+        }
     }
 
     function assignControlButtons() {
@@ -179,15 +188,13 @@ var bootstrap = require('bootstrap');
                 event.stopPropagation();
 
                 var self = this;
-                var action = self.getAttribute('data-action');
-                if(action == 'pause'){ sendPause(); }
-                else if(action == 'like'){ sendLike(); }
-                else if(action == 'skip'){ sendSkip(); }
-                else if(action == 'start'){ sendStart(); }
-                else if(action == 'stop'){ sendStop(); }
-                else {
-                    console.log('Unknown action: ' + action);
+                if($(self).hasClass('disabled')) {
+                    return;
                 }
+
+                var action = self.getAttribute('data-action');
+                console.log('Sending action: ' + action);
+                sendMessage(action);
             }
         }
     }
