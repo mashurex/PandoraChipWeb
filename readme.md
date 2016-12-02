@@ -33,11 +33,26 @@ Developed and tested on Mac OS X running a Vagrant Debian Jessie image created f
 ## Dependencies
 
 The install script should install everything needed to get this running, but here's a brief overview of what is required and/or tested against:
+
 - A CHIP running 4.4 headless firmware or some other Debian Jessie system
 - NGINX
 - Node 7.2
 - NPM 3.10
 - pianobar 2016.06.02 (which is downloaded and built from source)
 
+## Installation
 
+- You should clone this to your chip user's home directory (`/home/chip` by default).    
+- `cd PandoraChipWeb/scripts`
+- `./install.sh`
+    + **!!!** Run this install command as your user (`chip`), not as root, and not with `sudo`.
+    + If you're running this on a CHIP it will take a **LONG** time.
+- `nano ~/.config/pianobar/config`
+    + Replace the email and password placeholders with your own
+- `sudo /etc/init.d/pcw start`
+    + The only time you will have to tell the web service to start is this very first time
+- Now browse to your CHIP's IP address or hostname.
+     + If you followed [this](http://docs.getchip.com/chip.html#zero-configuration-networking) guide you should be able to browse to `http://chip.local`.
+- In your browser window, press the start button to actually start pianobar
+- Enjoy
 
