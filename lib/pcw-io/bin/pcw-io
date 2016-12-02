@@ -123,6 +123,7 @@ function makePlayPauseButton() {
             debug('Start/Stop Toggle...');
             ws.send(JSON.stringify({ event: 'start-stop' }));
         } else {
+            debug('Pause Toggle...');
             ws.send(JSON.stringify({ event: 'pause-toggle', }));
         }
     });
