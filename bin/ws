@@ -136,11 +136,19 @@ server.on('listening', onListening);
 
 wss = new WebSocketServer({ server: server });
 wss.broadcast = function broadcast(data) {
-  debug('Broadcasting: ', data);
   wss.clients.forEach(function each(client) {
     client.send(data);
   });
 };
+
+var broadcastStats = function broadcastStats() {
+  pb.running();
+  var stats = pb.readStatsSync();
+  var isRunning = !pb.stopped;
+  wss.broadcast(JSON.stringify({ event: 'current-stats', stats: stats, running: isRunning }));
+};
+
+var broadcastIntervalId = setInterval(broadcastStats, 5000);
 
 wss.on('connection', function connection(ws) {
   var location = url.parse(ws.upgradeReq.url, true);
@@ -154,7 +162,8 @@ wss.on('connection', function connection(ws) {
         event: 'connected',
         id: guid,
         ts: Date.now().toString(),
-        stations: pb.readStationsSync()
+        stations: pb.readStationsSync(),
+        running: pb.running()
   }));
 
   ws.on('open', function open() {
@@ -173,7 +182,8 @@ wss.on('connection', function connection(ws) {
 
     if(event === 'current-status') {
       var stats = pb.readStatsSync();
-      ws.send(JSON.stringify({ stats: stats }));
+      var isRunning = !pb.stopped;
+      ws.send(JSON.stringify({ event: 'current-stats', stats: stats, running: isRunning }));
     }
     else if(event === 'skip') {
       pb.skip(function(err){
