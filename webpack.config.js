@@ -10,27 +10,32 @@ const PATHS = {
 
 //noinspection JSUnresolvedFunction
 module.exports = {
-    // cache: true,
+    cache: true,
     debug: true,
-    devtool: 'eval',
-    entry: {
-        main: path.join(PATHS.src, 'js', 'main.js')
-    },
+    devtool: 'cheap-eval-source-map',
+    entry: path.join(PATHS.src, 'js', 'main.js'),
     resolve: {
         modulesDirectories: ['node_modules'],
         alias: {
             jquery: 'jquery/dist/jquery',
             tether: 'tether'
-        }
+        },
+        extensions: ['','.js']
     },
     output: {
         path: path.join(PATHS.build, 'js'),
-        publicPath: './js/',
+        // publicPath: './js/',
         filename: '[name].js',
         sourceMapFilename: '[file].map',
-        libraryTarget: 'var'
+        // libraryTarget: 'var'
     },
     module: {
+        preLoaders: [
+            {
+                test: /\.js$/,
+                loader: "source-map-loader"
+            }
+        ],
         loaders: [{
             test: /\.js$/,
             loader: 'babel',
@@ -49,13 +54,5 @@ module.exports = {
             Tether: 'tether',
             'window.Tether': 'tether'
         })
-    ],
-    devServer: {
-        inline: true,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, x-id, Content-Length, X-Requested-With",
-        }
-    }
+    ]
 };

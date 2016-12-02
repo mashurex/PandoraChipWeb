@@ -83,27 +83,21 @@ gulp.task('dev:js', function(){
         .pipe(livereload());
 });
 
+gulp.task('dev:webpack', function() {
+    return gulp.src(CONFIG.paths.src.js + '/**/*.js')
+        .pipe(webpack_stream(webpackConfig))
+        .pipe(gulp.dest(CONFIG.paths.build.js));
+});
+
 gulp.task('build', function(callback){
     seq('clean', ['dev:scss','dev:js','dev:views'], callback);
 });
 
-gulp.task('watch', ['build'], function(){
-    livereload.listen({ start: true });
+gulp.task('dev:server', function(){
+    var wpConfig = Object.create(webpackConfig);
 
-    gulp.watch(CONFIG.paths.src.scss + '/**/*.scss', ['dev:scss']);
-    // gulp.watch(CONFIG.paths.src.html + '/_partials/**/*.html', ['views:all']);
-    gulp.watch(CONFIG.paths.src.html + '/*.html', ['dev:views']);
-    gulp.watch(CONFIG.paths.src.js + '/**/*.js', ['dev:js']);
-    // gulp.watch('img/**/*.{png,jpg,gif,svg}', { cwd: CONFIG.paths.src.root }, ['img']);
-
-    var compiler = webpack(webpackConfig);
-    compiler.plugin('done', function(){
-        // console.log('started: browse to http://localhost:8080/build/index.html')
-        console.log("Finished WebPack compilation");
-    });
-
-    new WebpackDevServer(compiler, {
-        // publicPath: CONFIG.paths.build.root,
+    new WebpackDevServer(webpack(wpConfig), {
+        publicPath: '/' + CONFIG.paths.build.root,
         stats: {
             colors: true
         },
@@ -116,6 +110,17 @@ gulp.task('watch', ['build'], function(){
         if(err) throw new gutil.PluginError("webpack-dev-server", err);
         console.log('[webpack-dev-server] browse to http://%s:%s/build/index.html', CONFIG.server.listen, CONFIG.server.port);
     });
+});
+
+gulp.task('watch', ['dev:server','build'], function(){
+    livereload.listen({ start: true });
+
+    gulp.watch(CONFIG.paths.src.scss + '/**/*.scss', ['dev:scss']);
+    // gulp.watch(CONFIG.paths.src.html + '/_partials/**/*.html', ['views:all']);
+    gulp.watch(CONFIG.paths.src.html + '/*.html', ['dev:views']);
+    // gulp.watch(CONFIG.paths.src.js + '/**/*.js', ['dev:js']);
+    // gulp.watch('img/**/*.{png,jpg,gif,svg}', { cwd: CONFIG.paths.src.root }, ['img']);
+    gulp.watch(CONFIG.paths.src.js + '/**/*.js', ['dev:webpack']);
 });
 
 gulp.task('default', ['build'], function(callback){
