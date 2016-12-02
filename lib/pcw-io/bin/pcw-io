@@ -6,24 +6,22 @@ const WebSocket = require('ws');
 const debug = require('debug')('pcw-io');
 
 const WS_URL = process.env.PCW_WS_URL || 'ws://localhost:3000';
-const WS_RECONNECT_INTERVAL = 1000;
-const PCW_DEBUG = process.env.PCW_DEBUG == 1;
-const PCW_REPL = process.env.PCW_REPL == 1;
+const WS_RECONNECT_INTERVAL = process.env.PCW_RECONNECT_INTERVAL || 1000;
+const WS_RECONNECT_MAX_TRIES = process.env.PCW_RECONNECT_MAX_TRIES || 5;
+const PCW_DEBUG = process.env.PCW_DEBUG_ENABLED == 1;
+const PCW_REPL = process.env.PCW_J5_REPL == 1;
 
 const BTN_PINS = ['XIO-P1','XIO-P3','XIO-P5'];
 const BTN_PIN_PLAY_PAUSE = BTN_PINS[0];
 const BTN_PIN_SKIP_LIKE = BTN_PINS[1];
 const BTN_PIN_STATION = BTN_PINS[2];
-var WS_RECONNECT_TRIES = 0;
-
+var currentReconnectTries = 0;
 var ws;
+
 if(PCW_DEBUG === true) {
-    ws = {
-        send: function(message){ console.log('Sending: ' + message); }
-    };
-} else {
-    wsConnect();
-}
+    console.log('Starting in debug mode, simulating WebSocket connectivity.');
+    ws = { send: function(message){ console.log('Sending: ' + message); } };
+} else { wsConnect(); }
 
 
 var board = new five.Board({
@@ -42,16 +40,22 @@ board.on('ready', function() {
     });
 });
 
+/**
+ * Create a new WebSocket connection with retries on close.
+ */
 function wsConnect() {
     ws = new WebSocket(WS_URL);
 
     ws.on('open', function open(){
         debug('WebSocket opened to ' + WS_URL);
-        WS_RECONNECT_TRIES = 0;
+        // Reset reconnect try counter
+        currentReconnectTries = 0;
+        ws.send(JSON.stringify({ client_type: 'pcw-io' }))
     });
 
     ws.on('message', function(data, flags) {
         debug('Message received: ', data);
+        debug('Flags: ', flags);
     });
 
     ws.on('error', function(err) {
@@ -59,67 +63,77 @@ function wsConnect() {
     });
 
     ws.on('close', function(){
-        console.error('WebSocket closed!');
-        WS_RECONNECT_TRIES++;
-
-        if(WS_RECONNECT_TRIES <= 5) {
-            setTimeout(wsConnect, WS_RECONNECT_INTERVAL * WS_RECONNECT_TRIES);
+        if(currentReconnectTries++ < WS_RECONNECT_MAX_TRIES) {
+            console.log('Reconnecting WebSocket, try %s...', WS_RECONNECT_MAX_TRIES);
+            setTimeout(wsConnect, WS_RECONNECT_INTERVAL * currentReconnectTries);
         } else {
-            console.error('Cannot connect to PCW WebSocket Server after max tries (%s), exiting...', (WS_RECONNECT_TRIES - 1));
+            console.error('Cannot connect to PCW WebSocket Server after max tries (%s), exiting...', WS_RECONNECT_MAX_TRIES);
             process.exit(1);
         }
     });
-
 }
-function makeButton(pin) {
-    return new five.Button(pin);
+
+/**
+ * Makes a button with custom properties and methods, binding the provided callbacks.
+ *
+ * @param pin       {String}    CHIP pin to bind to.
+ * @param upCB      {function}  Callback method when a button is released.
+ * @param downCB    {function}  Callback method when a button is initially pressed down.
+ * @param holdCB    {function}  Callback method when a button is being held.
+ * @returns         {Button}
+ */
+function makeButton(pin, upCB, downCB, holdCB) {
+    let btn = new five.Button(pin);
+    btn.custom.held = false;
+
+    btn.wasHeld = function() {
+        return this.custom.held;
+    };
+
+    btn.resetHold = function() {
+        this.custom.held = false;
+        return this;
+    };
+
+    btn.on('up', function btnUp() {
+        debug('[pin %s] btn up', pin);
+        upCB(this, this.wasHeld());
+        this.resetHold();
+    });
+
+    btn.on('down', function btnDown() {
+        debug('[pin %s] btn down', pin);
+        if(downCB) { downCB(this); }
+    });
+
+    btn.on('hold', function btnHold(){
+        if(!this.custom.held) {
+            this.custom.held = true;
+            debug('[pin %s] btn hold', pin);
+        }
+        if(holdCB) { holdCB(this); }
+    });
+
+    return btn;
 }
 
 function makePlayPauseButton() {
-    let btn = makeButton(BTN_PIN_PLAY_PAUSE);
-
-    btn.held = false;
-    btn.on('down', function playPauseDown(){
-        debug('Play/Pause down');
-    });
-
-    btn.on('hold', function playPauseHold(){
-        if(!this.held) {
-            this.held = true;
-            debug('Play/Pause hold');
-        }
-    });
-
-    btn.on('up', function playPauseUp(){
-        if(this.held) {
-            this.held = false;
+    let btn = makeButton(BTN_PIN_PLAY_PAUSE, function(btn, wasHeld){
+        if(wasHeld) {
             debug('Start/Stop Toggle...');
             ws.send(JSON.stringify({ event: 'start-stop' }));
         } else {
-            debug('Pause Toggle...');
             ws.send(JSON.stringify({ event: 'pause-toggle', }));
         }
     });
+
+    btn.custom.name = 'PLAY_PAUSE';
+    return btn;
 }
 
 function makeSkipLikeButton() {
-    let btn = makeButton(BTN_PIN_SKIP_LIKE);
-
-    btn.held = false;
-    btn.on('down', function skipLikeDown(){
-        debug('Skip/Like down');
-    });
-
-    btn.on('hold', function skipLikeHold(){
-        if(!this.held) {
-            this.held = true;
-            debug('Skip/Like hold');
-        }
-    });
-
-    btn.on('up', function skipLikeUp(){
-        if(this.held) {
-            this.held = false;
+    let btn = makeButton(BTN_PIN_SKIP_LIKE, function(btn, wasHeld) {
+        if(wasHeld) {
             debug('Liking...');
             ws.send(JSON.stringify({ event: 'like' }));
         } else {
@@ -127,31 +141,22 @@ function makeSkipLikeButton() {
             ws.send(JSON.stringify({ event: 'skip', }));
         }
     });
+
+    btn.custom.name = 'SKIP_LIKE';
+    return btn;
 }
 
 function makeStationButton() {
-    let btn = makeButton(BTN_PIN_STATION);
-
-    btn.held = false;
-    btn.on('down', function stationDown(){
-        console.log('Station down');
-    });
-
-    btn.on('hold', function stationHold(){
-        if(!this.held) {
-            this.held = true;
-            console.log('Station hold');
-        }
-    });
-
-    btn.on('up', function stationUp(){
-        if(this.held) {
-            this.held = false;
+    let btn = makeButton(BTN_PIN_STATION, function (btn, wasHeld) {
+        if (wasHeld) {
             debug('Banning...');
-            ws.send(JSON.stringify({ event: 'ban' }));
+            ws.send(JSON.stringify({event: 'ban'}));
         } else {
             debug('Next Station...');
-            ws.send(JSON.stringify({ event: 'station-next' }));
+            ws.send(JSON.stringify({event: 'station-next'}));
         }
     });
+
+    btn.custom.name = 'STATION';
+    return btn;
 }
