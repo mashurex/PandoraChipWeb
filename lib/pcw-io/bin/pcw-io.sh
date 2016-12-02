@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 action=$1
-
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export DEBUG="pcw pcw-io"
 
 if [ -z "${PCW_IO_HOME}" ]; then
-    PCW_IO_HOME="${PCW_HOME}/lib//pcw-io"
+    export PCW_IO_HOME="${SCRIPT_DIR}/.."
 fi
 
 if [ ! -d "${PCW_IO_HOME}" ]; then

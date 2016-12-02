@@ -68,7 +68,7 @@ if [ -z "${action}" ]; then
    exit 1
 fi
 
-if [ -z "$PCW_HOME" ]; then
+if [ -z "${PCW_HOME}" ]; then
     export PCW_HOME="${user_home}/pandorachipweb"
     dir_set=1
 fi
@@ -77,7 +77,7 @@ if [ -z "$DEBUG" ]; then
     export DEBUG="pcw pcw-io"
 fi
 
-if [ -z "$PCW_CTL_FILE" ]; then
+if [ -z "${PCW_CTL_FILE}" ]; then
     export PCW_CTL_FILE="${user_home}/.config/pianobar/ctl"
     dir_set=1
 fi
