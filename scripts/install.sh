@@ -27,9 +27,17 @@ sudo sh -c "ldd `which pianobar` | grep \"=> /\" | awk '{print $3}' | xargs -I '
 echo -e "Configuring pianobar for ${USER}..."
 mkdir -p ~/.config/pianobar
 mkfifo ~/.config/pianobar/ctl
-cp "${SCRIPT_DIR}/pianobar.config ~/.config/pianobar/config"
-echo -e "event_command = ${PCW_HOME}/scripts/eventcmd.sh" >> ~/.config/pianobar/config
+cp "${SCRIPT_DIR}/pianobar.config" ~/.config/pianobar/config
+echo "event_command = ${PCW_HOME}/scripts/eventcmd.sh" >> ~/.config/pianobar/config
 cat >> ~/.profile << EOL
+
+# PCW ENV Settings
+export PCW_HOME="${PCW_HOME}"
+export PCW_IO_HOME="${PCW_IO_HOME}"
+
+EOL
+
+cat >> ~/.bashrc << EOL
 
 # PCW ENV Settings
 export PCW_HOME="${PCW_HOME}"
