@@ -8,7 +8,7 @@ These can be extended to allow control from anywhere or anything as the web comp
 
 Plug some speakers into the C.H.I.P. and you're ready to go.
 
-![Chip Image](/chip.png?raw=true "CHIP with LiPo Battery and 3 buttons)
+![Chip Image](/chip.png?raw=true "CHIP with LiPo Battery and 3 buttons")
 
 ## How Does It Work
 There are two main components *(Web and GPIO)* that are used to 'remotely' control music. 
