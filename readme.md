@@ -7,7 +7,9 @@ The code provided has a basic browser based interface and also allows for contro
 These can be extended to allow control from anywhere or anything as the web component is basically a WebSocket based API for a running pianobar instance.
 
 Plug some speakers into the C.H.I.P. and you're ready to go.
-  
+
+![Chip Image](/chip.png?raw=true "CHIP with LiPo Battery and 3 buttons)
+
 ## How Does It Work
 There are two main components *(Web and GPIO)* that are used to 'remotely' control music. 
 
