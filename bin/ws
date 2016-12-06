@@ -11,10 +11,13 @@ const fs = require('fs');
 const WebSocketServer = require('ws').Server;
 const port = normalizePort(process.env.PORT || '3000');
 const PianoBar = require('../lib/PianoBar');
+const BatteryStats = require('../lib/BatteryStats');
 const childProcess = require('child_process');
 const BIN_DIR = path.join(__dirname);
 
+
 var pb = new PianoBar();
+
 var wss;
 
 var generateGUID = function guid() {
@@ -27,7 +30,6 @@ var generateGUID = function guid() {
          s4() + '-' + s4() + s4() + s4();
 };
 
-// startPianoBar();
 
 var broadcastUpdate = function broadcastUpdate() {
   pb.readStats(function(err, stats){
@@ -44,6 +46,20 @@ var broadcastUpdate = function broadcastUpdate() {
     wss.broadcast(JSON.stringify(data));
   });
 };
+
+var batteryStatsBroadcast = function(stats) {
+  let data = {
+    ts: Date.now().toString(),
+    stats: stats,
+    event: 'battery-stats'
+  };
+
+  if(stats && stats.has_battery) {
+      wss.broadcast(JSON.stringify(data));
+  }
+};
+
+const bs = new BatteryStats({ stats_cb: batteryStatsBroadcast });
 
 var startPianoBar = function startPianoBar() {
   debug('Starting pianobar...');
@@ -147,16 +163,20 @@ var broadcastStats = function broadcastStats() {
   var isRunning = !pb.stopped;
   wss.broadcast(JSON.stringify({ event: 'current-stats', stats: stats, running: isRunning }));
 };
-
 var broadcastIntervalId = setInterval(broadcastStats, 5000);
 
+var batteryStatsIntervalId;
+var batteryStats = function batteryStats() {
+  bs.getBatteryStats(function(err, stats){
+    if(err) {
+      console.error(err);
+      clearInterval(batteryStatsIntervalId);
+    }
+  });
+};
+batteryStatsIntervalId = setInterval(batteryStats, 5000);
+
 wss.on('connection', function connection(ws) {
-  var location = url.parse(ws.upgradeReq.url, true);
-  debug('WS Client Connection:', location);
-
-  // you might use location.query.access_token to authenticate or share sessions
-  // or ws.upgradeReq.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
-
   var guid = generateGUID();
   ws.send(JSON.stringify({
         event: 'connected',
@@ -177,8 +197,6 @@ wss.on('connection', function connection(ws) {
   ws.on('message', function(data, flags) {
     let json = JSON.parse(data);
     let event = json.event;
-
-    debug('WS Message: ', json);
 
     if(event === 'current-status') {
       var stats = pb.readStatsSync();
