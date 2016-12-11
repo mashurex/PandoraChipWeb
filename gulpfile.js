@@ -84,8 +84,15 @@ gulp.task('dev:fonts', function() {
         .pipe(livereload());
 });
 
+gulp.task('dev:images', function() {
+    return gulp.src(CONFIG.paths.src.img + '/**/*.*')
+        .pipe(debug({ title: 'Images'}))
+        .pipe(gulp.dest(CONFIG.paths.build.img))
+        .pipe(livereload());
+});
+
 gulp.task('build', function(callback) {
-    seq('clean', ['dev:scss', 'dev:fonts', 'dev:js','dev:views'], callback);
+    seq('clean', ['dev:scss', 'dev:images', 'dev:fonts', 'dev:js','dev:views'], callback);
 });
 
 gulp.task('dev:server', function() {

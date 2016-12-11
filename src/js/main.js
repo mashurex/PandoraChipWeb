@@ -1,9 +1,9 @@
-var $ = jQuery = require('jquery');
-var tether = require('tether');
-var bootstrap = require('bootstrap');
+const $ = jQuery = require('jquery');
+const tether = require('tether');
+const bootstrap = require('bootstrap');
 
 (function($) {
-    var currentStatus = {
+    let currentStatus = {
         album: '',
         title: '',
         artist: '',
@@ -13,15 +13,16 @@ var bootstrap = require('bootstrap');
         stopped: true
     };
 
-    var stations = [];
-    var clientId = 'NOTSET';
-    var isRunning = false;
+    let stations = [];
+    let clientId = 'NOTSET';
+    let isRunning = false;
+    let songHistory = [];
 
     const host = window.document.location.host.replace(/:.*/, '');
     const ws = new WebSocket('ws://' + host + ':3000');
-    // const ws = new WebSocket('ws://pcw.vagrant.app:3000');
+
     ws.onmessage = function onMessageEvent(event) {
-        var data = JSON.parse(event.data);
+        let data = JSON.parse(event.data);
         if(!data.event){ data.event = 'songstart'; }
 
         if(data.event === 'songstart' || data.event === 'current-stats'){ updateStats(data); }
@@ -45,7 +46,7 @@ var bootstrap = require('bootstrap');
     function sendMessage(event, data) {
         if(ws.readyState == 3){ console.error('Connection closed!'); return; }
 
-        var cnt = 0;
+        let cnt = 0;
         while(ws.readyState !== 1 && cnt++ < 5) {
             setTimeout(function(){ console.log('Connection wait try...'); }, 250 * cnt);
         }
@@ -68,7 +69,7 @@ var bootstrap = require('bootstrap');
     function updateStations(updated) {
         stations = updated.stations;
 
-        var stationsElm = document.getElementById('stations-list-container');
+        let stationsElm = document.getElementById('stations-list-container');
         if(!stationsElm){ return; }
 
         while(stationsElm.firstChild) {
@@ -77,23 +78,23 @@ var bootstrap = require('bootstrap');
 
         if(!stations || stations.length === 0){ console.log('No stations'); return; }
 
-        var listElm = document.createElement('ul');
+        let listElm = document.createElement('ul');
         listElm.setAttribute('class', 'station-list');
         stationsElm.appendChild(listElm);
 
-        for(var i = 0; i < stations.length; i++) {
-            var station = stations[i];
-            var li = document.createElement('li');
+        for(let i = 0; i < stations.length; i++) {
+            let station = stations[i];
+            let li = document.createElement('li');
             li.setAttribute('class', 'station');
             listElm.appendChild(li);
 
-            var a = document.createElement('a');
+            let a = document.createElement('a');
             a.innerText = station.title;
             a.setAttribute('href', 'javascript:void(0);');
             a.setAttribute('data-station', station.name);
             a.addEventListener('click', function(e){
-                var self = e.target;
-                var stationName = self.getAttribute('data-station');
+                let self = e.target;
+                let stationName = self.getAttribute('data-station');
                 sendChangeStation(stationName);
             });
 
@@ -110,7 +111,7 @@ var bootstrap = require('bootstrap');
     }
 
     function getStationId(title) {
-        for(var i = 0; i < stations.length; i++) {
+        for(let i = 0; i < stations.length; i++) {
             if(stations[i].title === title){ return stations[i].name; }
         }
 
@@ -121,10 +122,10 @@ var bootstrap = require('bootstrap');
         let battery = data.stats;
         let batteryElm = $('#battery-stats');
         let chargingStatusElm = $('#charging-status');
-        let pctStatusElm = $('#battery-percentage')
-        if(!battery.has_battery)
-        {
-            $('#battery-stats').hide();
+        let pctStatusElm = $('#battery-percentage');
+
+        if(!battery.has_battery) {
+            $(batteryElm).hide();
             return;
         }
 
@@ -157,39 +158,70 @@ var bootstrap = require('bootstrap');
         $(batteryElm).show();
     }
 
+    function pushSongHistory(song) {
+        if((!(song && song.title))){ return; }
+
+        songHistory.push(song);
+
+        let li = document.createElement('li');
+        li.setAttribute('class', 'song-history');
+        li.setAttribute('data-cover', song.coverArt);
+        li.innerText = song.title + ' by ' + song.artist;
+
+        let songHistoryElm = document.getElementById('song-history');
+        songHistoryElm.appendChild(li);
+    }
+
     function updateStats(data) {
-        currentStatus = data.stats;
+        let newStatus = data.stats;
+        currentStatus.paused = newStatus.paused;
+        currentStatus.stopped = newStatus.stopped;
 
-        $("[data-value='artist']").each(function(){
-            $(this).text(currentStatus.artist);
-        });
+        if (currentStatus.title !== newStatus.title) {
+            let lastSong = {
+                album: currentStatus.album,
+                artist: currentStatus.artist,
+                coverArt: currentStatus.coverArt,
+                station: currentStatus.station,
+                title: currentStatus.title
+            };
 
-        $("[data-value='album']").each(function(){
-            $(this).text(currentStatus.album);
-        });
+            pushSongHistory(lastSong);
+            currentStatus = newStatus;
 
-        $("[data-value='title']").each(function(){
-            $(this).text(currentStatus.title);
-        });
+            $("[data-value='artist']").each(function () {
+                $(this).text(currentStatus.artist);
+            });
 
-        $("[data-value='station']").each(function(){
-            $(this).text(currentStatus.station);
-        });
+            $("[data-value='album']").each(function () {
+                $(this).text(currentStatus.album);
+            });
 
-        let stationId = getStationId(currentStatus.station);
-        $(".station-list li.station").removeClass('active');
-        $(".station-list li.station a[data-station='" + stationId + "'").each(function(){
-            $(this).parent().addClass('active');
-        });
+            $("[data-value='title']").each(function () {
+                $(this).text(currentStatus.title);
+            });
 
-        $("img.cover-art").each(function(){
-            if(currentStatus.coverArt) {
-                $(this).attr('src', currentStatus.coverArt);
+            $("img.cover-art").each(function () {
+                if (currentStatus.coverArt) {
+                    $(this).attr('src', currentStatus.coverArt);
+                }
+                else {
+                    $(this).attr('src', '/img/placeholder.png')
+                }
+            });
+
+            if(lastSong.station !== currentStatus.station) {
+                $("[data-value='station']").each(function () {
+                    $(this).text(currentStatus.station);
+                });
+
+                let stationId = getStationId(currentStatus.station);
+                $(".station-list li.station").removeClass('active');
+                $(".station-list li.station a[data-station='" + stationId + "'").each(function () {
+                    $(this).parent().addClass('active');
+                });
             }
-            else {
-                $(this).attr('src', 'http://placekitten.com/g/500/500')
-            }
-        });
+        }
 
         if(data.running != isRunning) {
             isRunning = (data.running == true);
@@ -210,35 +242,47 @@ var bootstrap = require('bootstrap');
         }
 
         if(isRunning) {
-            if(currentStatus.paused) {
-                $('#btn-pause').text('Play');
-            } else {
-                $('#btn-pause').text('Pause');
-            }
+            updatePlayPause(!currentStatus.paused);
         }
     }
 
+    function updatePlayPause(isPlaying) {
+        let title = (!isPlaying ? 'Play' : 'Pause');
+
+        let elm = $('a#btn-pause i.fa').first();
+
+        $(elm).removeClass('fa-play');
+        $(elm).removeClass('fa-pause');
+        $(elm).addClass('fa-' + (!isPlaying ? 'play' : 'pause'));
+        $(elm).attr('title', title);
+    }
+
     function assignControlButtons() {
-        var buttons = document.getElementsByClassName('btn-control');
+        let buttons = document.getElementsByClassName('btn-control');
         if(!buttons || buttons.length == 0){ return; }
 
-        for(var i = 0; i < buttons.length; i++) {
-            var button = buttons[i];
+        for(let i = 0; i < buttons.length; i++) {
+            let button = buttons[i];
             button.onclick = function(event) {
                 event.preventDefault();
                 event.stopPropagation();
 
-                var self = this;
+                let self = this;
                 if($(self).hasClass('disabled')) {
                     return;
                 }
 
-                var action = self.getAttribute('data-action');
-                console.log('Sending action: ' + action);
+                let action = self.getAttribute('data-action');
+                // console.log('Sending action: ' + action);
                 sendMessage(action);
             }
         }
     }
 
     assignControlButtons();
-})(jQuery || window.jQuery);
+
+    $('#btn-pause').click(function(e){
+        updatePlayPause(currentStatus.paused);
+        // sendMessage('pause-toggle');
+    });
+})($ || jQuery || window.jQuery);

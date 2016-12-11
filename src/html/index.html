@@ -27,8 +27,8 @@
                         <div class="col-xs-6 mx-auto">
                             <div class="controls">
                                 <a id="btn-like" href="#btn-like" data-action="like" class="btn btn-control btn-primary"><i class="fa fa-thumbs-o-up" title="Like"></i></a>
-                                <a id="btn-ban" href="#btn-ban" class="btn btn-control btn-danger"><i class="fa fa-thumbs-o-down" title="Ban"></i></a>
-                                <a id="btn-pause" href="#btn-pause" data-action="pause-toggle" class="btn btn-control btn-primary"><i class="fa fa-pause" title="Pause"></i></a>
+                                <a id="btn-ban" href="#btn-ban" class="btn btn-control btn-danger disabled"><i class="fa fa-thumbs-o-down" title="Ban"></i></a>
+                                <a id="btn-pause" href="#btn-pause" data-status="pause" data-action="pause-toggle" class="btn btn-control btn-primary"><i class="fa fa-pause" title="Pause"></i></a>
                                 <a id="btn-skip" href="#btn-skip" data-action="skip" class="btn btn-control btn-warning"><i class="fa fa-fast-forward" title="Skip"></i></a>
                             </div>
                         </div>
@@ -38,7 +38,7 @@
                             <div id="song-details-container">
                                 <div class="row">
                                     <div class="col-xs-12 text-xs-center">
-                                        <img class="cover-art img-fluid" src="http://placekitten.com/g/500/500" />
+                                        <img class="cover-art img-fluid" src="img/placeholder.png" />
                                     </div>
                                 </div>
                                 <div class="row">
@@ -64,6 +64,9 @@
                         <div class="col-xs-12" id="stations-list-container">No Stations</div>
                     </div>
                 </div>
+            </section>
+            <section>
+                <ul id="song-history"></ul>
             </section>
         </div>
         <script src="js/main.js" type="application/javascript"></script>
