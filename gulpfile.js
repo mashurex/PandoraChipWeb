@@ -77,8 +77,15 @@ gulp.task('dev:js', function() {
         .pipe(livereload());
 });
 
+gulp.task('dev:fonts', function() {
+    return gulp.src(CONFIG.paths.src.fonts + '/**/*.*')
+        .pipe(debug({ title: 'Fonts'}))
+        .pipe(gulp.dest(CONFIG.paths.build.fonts))
+        .pipe(livereload());
+});
+
 gulp.task('build', function(callback) {
-    seq('clean', ['dev:scss','dev:js','dev:views'], callback);
+    seq('clean', ['dev:scss', 'dev:fonts', 'dev:js','dev:views'], callback);
 });
 
 gulp.task('dev:server', function() {
