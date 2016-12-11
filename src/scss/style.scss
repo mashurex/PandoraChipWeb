@@ -1,9 +1,9 @@
-//@import '../../node_modules/bootstrap/scss/_variables.scss';
-//@import '../../node_modules/bootstrap/scss/_mixins.scss';
-//@import '../../node_modules/bootstrap/scss/_normalize.scss';
-//@import '../../node_modules/bootstrap/scss/_reboot.scss';
-//@import '../../node_modules/bootstrap/scss/_grid.scss';
 @import '../../node_modules/bootstrap/scss/bootstrap-flex.scss';
+@import './font-awesome/font-awesome.scss';
+
+.hidden {
+  display: none;
+}
 
 .station-list {
   list-style: none;
@@ -15,4 +15,8 @@
   li.active {
     list-style-type: circle;
   }
+}
+
+.strong {
+  font-weight: bold;
 }
