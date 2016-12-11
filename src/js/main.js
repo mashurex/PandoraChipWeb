@@ -30,6 +30,7 @@ var bootstrap = require('bootstrap');
             updateStations(data.stations);
             requestCurrentStatus();
         }
+        else if(data.event === 'battery-stats') { updateBattery(data); }
         else {
             console.log('Received message, nothing to do?');
             console.log(data);
@@ -114,6 +115,46 @@ var bootstrap = require('bootstrap');
         }
 
         return null;
+    }
+
+    function updateBattery(data) {
+        let battery = data.stats;
+        let batteryElm = $('#battery-stats');
+        let chargingStatusElm = $('#charging-status');
+        let pctStatusElm = $('#battery-percentage')
+        if(!battery.has_battery)
+        {
+            $('#battery-stats').hide();
+            return;
+        }
+
+        if(battery.is_charging) {
+            $(chargingStatusElm).removeClass('hidden');
+            $(chargingStatusElm).show();
+        } else {
+            $(chargingStatusElm).hide();
+        }
+
+        $(pctStatusElm).removeClass('fa-battery-0');
+        $(pctStatusElm).removeClass('fa-battery-1');
+        $(pctStatusElm).removeClass('fa-battery-2');
+        $(pctStatusElm).removeClass('fa-battery-3');
+        $(pctStatusElm).removeClass('fa-battery-4');
+
+        if(battery.percentage < 25){
+            $(pctStatusElm).addClass('fa-battery-0');
+        } else if(battery.percentage < 50){
+            $(pctStatusElm).addClass('fa-battery-1');
+        } else if(battery.percentage < 75){
+            $(pctStatusElm).addClass('fa-battery-2');
+        } else if(battery.percentage < 90) {
+            $(pctStatusElm).addClass('fa-battery-3');
+        } else {
+            $(pctStatusElm).addClass('fa-battery-4');
+        }
+
+        $(batteryElm).removeClass('hidden');
+        $(batteryElm).show();
     }
 
     function updateStats(data) {
