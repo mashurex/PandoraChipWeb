@@ -40,6 +40,9 @@ module.exports = {
             test: /\.js$/,
             loader: 'babel',
             exclude: /node_modules/
+        },{
+            test: require.resolve('jquery'),
+            loader: 'expose?jQuery!expose?$'
         }]
     },
     babel: {

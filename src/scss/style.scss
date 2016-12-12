@@ -1,5 +1,6 @@
 @import '../../node_modules/bootstrap/scss/bootstrap-flex.scss';
 @import './font-awesome/font-awesome.scss';
+@import './toggle-button.scss';
 
 .hidden {
   display: none;
@@ -18,5 +19,24 @@
 }
 
 .strong {
-  font-weight: bold;
+  font-weight: bold !important;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row !important;
+}
+
+.flex-row.flex-right {
+  justify-content: flex-end !important;
+}
+
+.flex-row.flex-left {
+  justify-content: flex-start !important;
+}
+
+.flex-center {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
 }

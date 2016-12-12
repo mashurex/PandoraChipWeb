@@ -1,6 +1,8 @@
-const $ = jQuery = require('jquery');
+window.jQuery = window.$ = require('jquery');
+
 const tether = require('tether');
 const bootstrap = require('bootstrap');
+const $ = jQuery = window.jQuery;
 
 (function($) {
     let currentStatus = {
@@ -119,6 +121,7 @@ const bootstrap = require('bootstrap');
     }
 
     function updateBattery(data) {
+        console.log(data);
         let battery = data.stats;
         let batteryElm = $('#battery-stats');
         let chargingStatusElm = $('#charging-status');
@@ -173,6 +176,7 @@ const bootstrap = require('bootstrap');
     }
 
     function updateStats(data) {
+        console.log(data);
         let newStatus = data.stats;
         currentStatus.paused = newStatus.paused;
         currentStatus.stopped = newStatus.stopped;
@@ -225,25 +229,29 @@ const bootstrap = require('bootstrap');
 
         if(data.running != isRunning) {
             isRunning = (data.running == true);
-            if(isRunning) {
-                $('#btn-start').addClass('disabled');
-                $('#btn-stop').removeClass('disabled');
-            } else {
-                $('#btn-start').removeClass('disabled');
-                $('#btn-stop').addClass('disabled');
-            }
-
-            if(!isRunning) {
-                $('.controls .btn-control').addClass('disabled');
-            }
-            else {
-                $('.controls .btn-control').removeClass('disabled');
-            }
+            // if(isRunning) {
+            //     $('#btn-start').addClass('disabled');
+            //     $('#btn-stop').removeClass('disabled');
+            // } else {
+            //     $('#btn-start').removeClass('disabled');
+            //     $('#btn-stop').addClass('disabled');
+            // }
+            //
+            // if(!isRunning) {
+            //     $('.controls .btn-control').addClass('disabled');
+            // }
+            // else {
+            //     $('.controls .btn-control').removeClass('disabled');
+            // }
+            updateStartStop(isRunning);
         }
 
-        if(isRunning) {
-            updatePlayPause(!currentStatus.paused);
-        }
+        if(isRunning) { updatePlayPause(!currentStatus.paused); }
+    }
+
+    function updateStartStop(isRunning) {
+        let elm = $('#chkStartStop');
+        $(elm).prop('checked', isRunning);
     }
 
     function updatePlayPause(isPlaying) {
@@ -277,6 +285,12 @@ const bootstrap = require('bootstrap');
                 sendMessage(action);
             }
         }
+
+        $('input#chkStartStop').click(function(e){
+            let checked = $(this).is(':checked');
+            console.log('Start/Stop is ' + (!checked ? 'not ' : '') + 'checked');
+            sendMessage('start-stop');
+        });
     }
 
     assignControlButtons();
