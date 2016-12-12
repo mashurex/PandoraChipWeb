@@ -14,7 +14,8 @@ const PianoBar = require('../lib/PianoBar');
 const BatteryStats = require('../lib/BatteryStats');
 const childProcess = require('child_process');
 const BIN_DIR = path.join(__dirname);
-
+let lastStats = null;
+let lastBatteryStats = null;
 
 const pb = new PianoBar();
 
@@ -35,6 +36,7 @@ const broadcastUpdate = function broadcastUpdate() {
   pb.readStats(function(err, stats){
     if(err) {
       console.error(err);
+      debug(err);
       return;
     }
 
@@ -48,34 +50,34 @@ const broadcastUpdate = function broadcastUpdate() {
 };
 
 const batteryStatsBroadcast = function(stats) {
-  let data = {
-    ts: Date.now().toString(),
-    stats: stats,
-    event: 'battery-stats'
-  };
+  if(batteryStatsRequireUpdate(stats)) {
+    lastBatteryStats = stats;
 
-  if(stats && stats.has_battery) {
-      wss.broadcast(JSON.stringify(data));
+    let data = {
+        ts: Date.now().toString(),
+        stats: stats,
+        event: 'battery-stats'
+    };
+    wss.broadcast(JSON.stringify(data));
   }
 };
 
 const bs = new BatteryStats({ stats_cb: batteryStatsBroadcast });
 
 const startPianoBar = function startPianoBar() {
-  debug('Starting pianobar...');
   let command = 'bash ' + path.join(BIN_DIR, 'pbctl.sh') + ' start';
   let pianobar = childProcess.exec(command, function(error, stdout, stderr){
     if(stdout){ process.stdout.write(stdout); }
     if(stderr){ process.stderr.write(stderr); }
     if(error) {
       console.error(error.message);
+      debug(error.message, error);
     }
   });
 
   pianobar.on('exit', function(code){
     if(code !== 0){ console.error('Could not start pianobar process'); }
     else {
-      debug('pianobar started');
       pb.stopped = false;
       pb.paused = false;
     }
@@ -83,7 +85,6 @@ const startPianoBar = function startPianoBar() {
 };
 
 const stopPianoBar = function stopPianoBar() {
-  debug('Stopping pianobar...');
   try {
     let command = 'bash ' + path.join(BIN_DIR, 'pbctl.sh') + ' stop';
     debug(command);
@@ -94,13 +95,13 @@ const stopPianoBar = function stopPianoBar() {
          if(stderr){ process.stderr.write(stderr); }
          if(error) {
            console.error(error.message);
+           debug(error.message, error);
          }
        });
 
     pianobar.on('exit', function(code){
       if(code !== 0){ console.error('Could not stop pianobar process'); }
       else {
-        debug('pianobar stopped');
         pb.stopped = true;
         pb.paused = true;
       }
@@ -176,34 +177,63 @@ wss.broadcast = function broadcast(data) {
   });
 };
 
-var broadcastStats = function broadcastStats() {
-  pb.running();
-  var stats = pb.readStatsSync();
-  var isRunning = !pb.stopped;
-  wss.broadcast(JSON.stringify({ event: 'current-stats', stats: stats, running: isRunning }));
+const statsRequireUpdate = function statsRequireUpdate(freshStats) {
+  if(!freshStats){ return false; }
+  if(!lastStats){ return true; }
+  return !(freshStats.title == lastStats.title &&
+     freshStats.stopped == !lastStats.running &&
+     freshStats.paused == lastStats.paused);
 };
 
-var broadcastIntervalId = setInterval(broadcastStats, 5000);
+const batteryStatsRequireUpdate = function batteryStatsRequireUpdate(s) {
+  if(!s){ return false; }
+  if(!lastBatteryStats){ return true; }
+  return !(s.has_battery == lastBatteryStats.has_battery &&
+           s.percentage == lastBatteryStats.percentage &&
+           s.is_charging == lastBatteryStats.is_charging);
+};
 
-var batteryStatsIntervalId;
-var batteryStats = function batteryStats() {
+const broadcastStats = function broadcastStats() {
+  pb.running();
+  let stats = pb.readStatsSync();
+  let isRunning = !pb.stopped;
+
+  if(statsRequireUpdate(stats)) {
+    lastStats = stats;
+    lastStats.running = isRunning;
+    wss.broadcast(JSON.stringify({ event: 'current-stats', stats: stats, running: isRunning }));
+  }
+};
+
+const broadcastIntervalId = setInterval(broadcastStats, 500);
+
+let batteryStatsIntervalId;
+const batteryStats = function batteryStats() {
   bs.getBatteryStats(function(err, stats){
     if(err) {
       console.error(err);
+      debug('Battery stats error', err);
       clearInterval(batteryStatsIntervalId);
     }
   });
 };
-batteryStatsIntervalId = setInterval(batteryStats, 5000);
+batteryStatsIntervalId = setInterval(batteryStats, 500);
 
 wss.on('connection', function connection(ws) {
-  var guid = generateGUID();
+  let guid = generateGUID();
   ws.send(JSON.stringify({
-        event: 'connected',
-        id: guid,
-        ts: Date.now().toString(),
-        stations: pb.readStationsSync(),
-        running: pb.running()
+    event: 'connected',
+    id: guid,
+    ts: Date.now().toString(),
+    stations: pb.readStationsSync(),
+    running: pb.running()
+  }));
+
+  ws.send(JSON.stringify({
+    event: 'battery-stats',
+    id: guid,
+    ts: Date.now().toString(),
+    stats: lastBatteryStats
   }));
 
   ws.on('open', function open() {
@@ -230,6 +260,10 @@ wss.on('connection', function connection(ws) {
     }
     else if(event === 'like') {
       pb.like(function(err){
+        if(err){ console.error(err); }
+      });
+    } else if(event === 'ban') {
+      pb.ban(function(err){
         if(err){ console.error(err); }
       });
     }
@@ -344,5 +378,7 @@ process.on('uncaughtException', function(e){
   console.error('Shutting down due to uncaught exception...');
   console.error(e.message);
   console.error(e.stack);
+  debug('UncaughtException: ' + e.message);
+  debug(e.stack);
   process.abort();
 });
