@@ -1,0 +1,33 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "editor.formatOnSave": true,
+        "eslint.alwaysShowStatus": true,
+        "eslint.packageManager": "yarn",
+        "eslint.options": {
+            "configFile": ".eslintrc.js",
+            "extensions": [".html", ".js", ".vue", ".jsx"]
+        },
+        "eslint.workingDirectories": ["./pcw-ui"],
+        "eslint.validate": [
+            "javascriptreact",
+            {
+                "language": "javascript",
+                "autoFix": true
+            },
+            {
+                "language": "vue",
+                "autoFix": true
+            },
+            {
+                "language": "html",
+                "autoFix": true
+            }
+        ],
+        "eslint.autoFixOnSave": true
+    }
+}

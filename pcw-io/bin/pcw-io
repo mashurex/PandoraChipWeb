@@ -1,0 +1,65 @@
+#!/usr/bin/env node
+
+const WebSocket = require("ws");
+const debug = require("debug")("pcw-io");
+
+const WS_URL = process.env.PCW_WS_URL || "ws://localhost:3000";
+const WS_RECONNECT_INTERVAL = process.env.PCW_RECONNECT_INTERVAL || 1000;
+const WS_RECONNECT_MAX_TRIES = process.env.PCW_RECONNECT_MAX_TRIES || 5;
+const PCW_DEBUG = process.env.PCW_DEBUG_ENABLED == 1;
+const PCW_REPL = process.env.PCW_J5_REPL == 1;
+
+var currentReconnectTries = 0;
+var ws;
+
+if (PCW_DEBUG === true) {
+    console.log("Starting in debug mode, simulating WebSocket connectivity.");
+    ws = {
+        send: function(message) {
+            console.log("Sending: " + message);
+        }
+    };
+} else {
+    wsConnect();
+}
+
+/**
+ * Create a new WebSocket connection with retries on close.
+ */
+function wsConnect() {
+    ws = new WebSocket(WS_URL);
+
+    ws.on("open", function open() {
+        debug("WebSocket opened to " + WS_URL);
+        // Reset reconnect try counter
+        currentReconnectTries = 0;
+        ws.send(JSON.stringify({ client_type: "pcw-io" }));
+    });
+
+    ws.on("message", function(data, flags) {
+        debug("Message received: ", data);
+    });
+
+    ws.on("error", function(err) {
+        console.error("WebSocket Error: ", err);
+    });
+
+    ws.on("close", function() {
+        if (currentReconnectTries++ < WS_RECONNECT_MAX_TRIES) {
+            console.log(
+                "Reconnecting WebSocket, try %s...",
+                WS_RECONNECT_MAX_TRIES
+            );
+            setTimeout(
+                wsConnect,
+                WS_RECONNECT_INTERVAL * currentReconnectTries
+            );
+        } else {
+            console.error(
+                "Cannot connect to PCW WebSocket Server after max tries (%s), exiting...",
+                WS_RECONNECT_MAX_TRIES
+            );
+            process.exit(1);
+        }
+    });
+}

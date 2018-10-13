@@ -3,7 +3,7 @@
 /**
  * Module dependencies.
  */
-// const debug = require('debug')('pcw');
+const debug = require("debug")("pcw");
 const http = require("http");
 const url = require("url");
 const path = require("path");
@@ -11,13 +11,15 @@ const fs = require("fs");
 const WebSocketServer = require("ws").Server;
 const port = normalizePort(process.env.PORT || "3000");
 const PianoBar = require("../lib/PianoBar");
-const BatteryStats = require("../lib/BatteryStats");
+// const BatteryStats = require("../lib/BatteryStats");
 const childProcess = require("child_process");
 const BIN_DIR = path.join(__dirname);
 let lastStats = null;
-let lastBatteryStats = null;
+// let lastBatteryStats = null;
 
-const pb = new PianoBar();
+const pb = new PianoBar({
+    cwd: "/Users/mustafa/.config/pianobar"
+});
 
 let wss;
 
@@ -60,20 +62,20 @@ const broadcastUpdate = function broadcastUpdate() {
     });
 };
 
-const batteryStatsBroadcast = function(stats) {
-    if (batteryStatsRequireUpdate(stats)) {
-        lastBatteryStats = stats;
+// const batteryStatsBroadcast = function(stats) {
+//     if (batteryStatsRequireUpdate(stats)) {
+//         lastBatteryStats = stats;
 
-        let data = {
-            ts: Date.now().toString(),
-            stats: stats,
-            event: "battery-stats"
-        };
-        wss.broadcast(JSON.stringify(data));
-    }
-};
+//         let data = {
+//             ts: Date.now().toString(),
+//             stats: stats,
+//             event: "battery-stats"
+//         };
+//         wss.broadcast(JSON.stringify(data));
+//     }
+// };
 
-const bs = new BatteryStats({ stats_cb: batteryStatsBroadcast });
+// const bs = new BatteryStats({ stats_cb: batteryStatsBroadcast });
 
 const startPianoBar = function startPianoBar() {
     let command = "bash " + path.join(BIN_DIR, "pbctl.sh") + " start";
@@ -158,17 +160,24 @@ const server = http.createServer(function(req, res) {
             resBody = "ok";
             found = true;
             broadcastUpdate();
-        } else if (reqUrl == "/battery") {
+        } else if(reqUrl == "/bcast") {
             resBody = "ok";
             found = true;
-            batteryStats();
+            broadcastUpdate();
         }
+        // } else if (reqUrl == "/battery") {
+        //     resBody = "ok";
+        //     found = true;
+        //     batteryStats();
+        // }
     } else if (method === "GET") {
         if (reqUrl === "/stats") {
+            let = stats = pb.readStatsSync();
+
             found = true;
             resBody = JSON.stringify({
-                stats: pb.readStatsSync(),
-                battery: bs.getCurrentStats()
+                stats: stats
+                // battery: bs.getCurrentStats()
             });
             res.setHeader("Content-Type", "application/json; charset=utf-8");
         }
@@ -214,19 +223,19 @@ const statsRequireUpdate = function statsRequireUpdate(freshStats) {
     );
 };
 
-const batteryStatsRequireUpdate = function batteryStatsRequireUpdate(s) {
-    if (!s) {
-        return false;
-    }
-    if (!lastBatteryStats) {
-        return true;
-    }
-    return !(
-        s.has_battery == lastBatteryStats.has_battery &&
-        s.percentage == lastBatteryStats.percentage &&
-        s.is_charging == lastBatteryStats.is_charging
-    );
-};
+// const batteryStatsRequireUpdate = function batteryStatsRequireUpdate(s) {
+//     if (!s) {
+//         return false;
+//     }
+//     if (!lastBatteryStats) {
+//         return true;
+//     }
+//     return !(
+//         s.has_battery == lastBatteryStats.has_battery &&
+//         s.percentage == lastBatteryStats.percentage &&
+//         s.is_charging == lastBatteryStats.is_charging
+//     );
+// };
 
 const broadcastStats = function broadcastStats() {
     pb.running();
@@ -248,17 +257,17 @@ const broadcastStats = function broadcastStats() {
 
 const broadcastIntervalId = setInterval(broadcastStats, 500);
 
-let batteryStatsIntervalId;
-const batteryStats = function batteryStats() {
-    bs.getBatteryStats(function(err, stats) {
-        if (err) {
-            console.error(err);
-            debug("Battery stats error", err);
-            clearInterval(batteryStatsIntervalId);
-        }
-    });
-};
-batteryStatsIntervalId = setInterval(batteryStats, 500);
+// let batteryStatsIntervalId;
+// const batteryStats = function batteryStats() {
+//     // bs.getBatteryStats(function(err, stats) {
+//     //     if (err) {
+//     //         console.error(err);
+//     //         debug("Battery stats error", err);
+//     //         clearInterval(batteryStatsIntervalId);
+//     //     }
+//     // });
+// };
+// // batteryStatsIntervalId = setInterval(batteryStats, 500);
 
 wss.on("connection", function connection(ws) {
     let guid = generateGUID();
@@ -272,14 +281,14 @@ wss.on("connection", function connection(ws) {
         })
     );
 
-    ws.send(
-        JSON.stringify({
-            event: "battery-stats",
-            id: guid,
-            ts: Date.now().toString(),
-            stats: lastBatteryStats
-        })
-    );
+    // ws.send(
+    //     JSON.stringify({
+    //         event: "battery-stats",
+    //         id: guid,
+    //         ts: Date.now().toString(),
+    //         stats: lastBatteryStats
+    //     })
+    // );
 
     ws.on("open", function open() {
         ws.send(Date.now().toString(), { mask: true });
