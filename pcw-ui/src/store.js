@@ -12,6 +12,18 @@ const get = propName => state => {
   return state[propName];
 };
 
+function getStation (nameOrTitle, stations, defaultVal) {
+  if (!nameOrTitle || !stations || !stations.length) {
+    return null;
+  }
+
+  const found = stations.find(s => {
+    return s.name === nameOrTitle || s.title === nameOrTitle;
+  });
+
+  return found || defaultVal;
+}
+
 export default new Vuex.Store({
   state: {
     socket: {
@@ -25,8 +37,8 @@ export default new Vuex.Store({
       isRunning: false
     },
     currentStation: {
-      index: 0,
-      name: 'Everything Radio'
+      name: 'station0',
+      title: 'Everything Radio'
     },
     songDetails: {
       artist: 'Sam & Dave',
@@ -36,15 +48,19 @@ export default new Vuex.Store({
       coverArt:
         'http://mediaserver-cont-dc6-1-v4v6.pandora.com/images/public/rovi/albumart/4/2/5/3/5034504213524_500W_500H.jpg'
     },
-    songHistory: []
+    songHistory: [],
+    stations: []
   },
   getters: {
     isCurrentlyPlaying: get('isCurrentlyPlaying'),
     isCurrentlyPaused: get('isCurrentlyPaused'),
+    isRunning: state => {
+      return state.systemStatus.isRunning;
+    },
     songDetails: get('songDetails'),
-    currentStations: get('currentStation'),
+    currentStation: get('currentStation'),
     songHistory: get('songHistory'),
-
+    stations: get('stations'),
     socketIsConnected: state => {
       return state.socket.isConnected === true;
     },
@@ -68,10 +84,12 @@ export default new Vuex.Store({
     SOCKET_ONOPEN (state, event) {
       Vue.prototype.$socket = event.currentTarget;
       state.socket.isConnected = true;
+      console.log('OnOpen', { ...JSON.parse(JSON.stringify(event)) });
       Vue.prototype.$socket.sendObj({ event: 'current-status' });
     },
     SOCKET_ONCLOSE (state, event) {
       state.socket.isConnected = false;
+      console.log('OnClose', { ...JSON.parse(JSON.stringify(event)) });
     },
     SOCKET_ONERROR (state, event) {
       console.error(state, event);
@@ -79,6 +97,18 @@ export default new Vuex.Store({
     // default handler called for all methods
     SOCKET_ONMESSAGE (state, message) {
       const msg = JSON.parse(JSON.stringify(message));
+      console.log('ws message', { ...message });
+      if (msg.hasOwnProperty('running')) {
+        state.systemStatus.isRunning = !!msg.running;
+      }
+
+      if (msg.hasOwnProperty('stations') && msg.stations.length) {
+        if (state.stations.length !== msg.stations.length) {
+          console.log('Updating stations');
+          state.stations = JSON.parse(JSON.stringify(msg.stations));
+        }
+      }
+
       if (msg.stats) {
         const stats = JSON.parse(JSON.stringify(message.stats));
 
@@ -108,16 +138,9 @@ export default new Vuex.Store({
           state.songHistory = prvHistory;
           state.songDetails = currentSong;
         }
-        state.currentStation.name = station;
+        state.currentStation = getStation(station, state.stations, { name: 'stationX', title: station });
         state.isCurrentlyPlaying = playing;
         state.isCurrentlyPaused = !!stats.paused;
-        if (stats.hasOwnProperty('running')) {
-          state.systemStatus.isRunning = !!stats.running;
-        }
-      }
-
-      if (msg.hasOwnProperty('running')) {
-        state.systemStatus.isRunning = !!msg.running;
       }
     },
     // mutations for reconnect methods
@@ -135,10 +158,7 @@ export default new Vuex.Store({
           event: 'pause-toggle'
         };
 
-        if (
-          !state.systemStatus.isRunning ||
-          (!state.isCurrentlyPaused && !state.isCurrentlyPlaying)
-        ) {
+        if (!state.systemStatus.isRunning) {
           message.event = 'start';
         }
 
@@ -211,6 +231,23 @@ export default new Vuex.Store({
           resolve(true);
         } else {
           resolve(false);
+        }
+      });
+    },
+    stationChange ({ commit, state }, station) {
+      return new Promise((resolve, reject) => {
+        if (!station || station.name === state.currentStation.name) {
+          return resolve(false);
+        } else {
+          try {
+            console.log(`Changing station from '${state.currentStation.name}' to '${station.name}'`);
+            Vue.prototype.$socket.sendObj({ event: 'change-station', stationName: station.name });
+            commit('currentStation', JSON.parse(JSON.stringify(station)));
+            return resolve(true);
+          } catch (ex) {
+            console.error('Error changin station: ' + ex.message, ex);
+            return reject(ex);
+          }
         }
       });
     },

@@ -39,7 +39,7 @@ class PianoBar {
       control:
         process.env.PCW_CTL_FILE ||
         opts.control_file ||
-        "/Users/mustafa/.config/pianobar/ctl",
+        path.join(opts.cwd, "ctl"),
       pid:
         process.env.PCW_PID_FILE ||
         opts.pid_file ||
@@ -135,50 +135,95 @@ class PianoBar {
   }
 
   readStats(callback) {
-    // TODO: Not really async
+    const self = this;
+    const currentFile = this._options.files.current;
+    fs.readFile(currentFile, { encoding: "utf-8" }, (err, contents) => {
+      if (err) {
+        return callback(err);
+      } else {
+        let stats = {
+          station: "",
+          artist: "",
+          title: "",
+          album: "",
+          coverArt: "",
+          paused: self.paused,
+          stopped: self.stopped
+        };
 
-    try {
-      let stats = this.readStatsSync();
-      return callback(null, stats);
-    } catch (ex) {
-      return callback(new Error(ex.message));
-    }
+        try {
+          const lines = contents.split(/\r?\n/);
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            const parts = line.split("=");
+            if (parts.length == 2) {
+              stats[parts[0].trim()] = parts[1].trim();
+            }
+          }
+          self._updateCurrentStation(stats.station);
+        } catch (ex) {
+          console.error("Error parsing stats content: " + ex.message, ex);
+          return callback(ex);
+        }
+
+        return callback(null, stats);
+      }
+    });
   }
 
   readStations(callback) {
-    // TODO: Not really async
-    try {
-      let stations = this.readStationsSync();
-      return callback(null, stations);
-    } catch (ex) {
-      return callback(new Error(ex.message));
-    }
-  }
-
-  readStationsSync() {
-    let self = this;
-    let stations = [];
-    try {
-      let contents = fs.readFileSync(this._options.files.stations, "utf8");
-      let lines = contents.split(/;/);
-      for (let i = 0; i < lines.length; i++) {
-        let line = lines[i].trim();
-        let parts = line.split("|");
-        if (parts.length === 2) {
-          stations.push({
-            name: parts[0].trim(),
-            title: parts[1].trim()
-          });
+    const self = this;
+    const stationsFile = this._options.files.stations;
+    fs.readFile(stationsFile, { encoding: "utf-8" }, (err, contents) => {
+      if (err) {
+        return callback(err);
+      } else {
+        let lines = contents.split(/;/);
+        let stations = [];
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i].trim();
+          let parts = line.split("|");
+          if (parts.length === 2) {
+            stations.push({
+              name: parts[0].trim(),
+              title: parts[1].trim()
+            });
+          }
         }
-      }
-    } catch (ex) {}
 
-    self.stations = stations;
-    return {
-      stationsCount: stations.length,
-      stations: stations
-    };
+        self.stations = stations;
+        return callback(null, {
+          stationsCount: stations.length,
+          stations: stations
+        });
+      }
+    });
   }
+
+  // readStationsSync() {
+  //   let self = this;
+  //   let stations = [];
+  //   try {
+  //     let contents = fs.readFileSync(this._options.files.stations, "utf8");
+  //     let lines = contents.split(/;/);
+  //     for (let i = 0; i < lines.length; i++) {
+  //       let line = lines[i].trim();
+  //       let parts = line.split("|");
+  //       if (parts.length === 2) {
+  //         stations.push({
+  //           name: parts[0].trim(),
+  //           title: parts[1].trim()
+  //         });
+  //       }
+  //     }
+  //   } catch (ex) {}
+
+  //   self.stations = stations;
+  //   return {
+  //     stationsCount: stations.length,
+  //     stations: stations
+  //   };
+  // }
 
   readStatsSync() {
     let stats = {
@@ -211,7 +256,7 @@ class PianoBar {
   }
 
   writeCommand(command, callback) {
-    let fifo = this._fifo;
+    const fifo = this._fifo;
     try {
       fifo.write(command.trim() + "\n", false, function(err) {
         if (err) {

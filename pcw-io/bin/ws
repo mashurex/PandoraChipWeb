@@ -11,14 +11,24 @@ const fs = require("fs");
 const WebSocketServer = require("ws").Server;
 const port = normalizePort(process.env.PORT || "3000");
 const PianoBar = require("../lib/PianoBar");
-// const BatteryStats = require("../lib/BatteryStats");
 const childProcess = require("child_process");
 const BIN_DIR = path.join(__dirname);
 let lastStats = null;
-// let lastBatteryStats = null;
+let currentStations = [];
+let currentStation = null;
+let currentSong = {};
 
 const pb = new PianoBar({
+    // FIXME:
     cwd: "/Users/mustafa/.config/pianobar"
+});
+
+pb.readStations((err, res) => {
+    if (!err) {
+        currentStations = res.stations;
+    } else {
+        console.error("Cannot read stations", err);
+    }
 });
 
 let wss;
@@ -29,20 +39,17 @@ const generateGUID = function guid() {
             .toString(16)
             .substring(1);
     }
-    return (
-        s4() +
-        s4() +
-        "-" +
-        s4() +
-        "-" +
-        s4() +
-        "-" +
-        s4() +
-        "-" +
-        s4() +
-        s4() +
-        s4()
-    );
+
+    return `${s4()}${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
+    // return (s4() + s4() + "-" + s4() + "-" +
+    //     s4() +
+    //     "-" +
+    //     s4() +
+    //     "-" +
+    //     s4() +
+    //     s4() +
+    //     s4()
+    // );
 };
 
 const broadcastUpdate = function broadcastUpdate() {
@@ -61,21 +68,6 @@ const broadcastUpdate = function broadcastUpdate() {
         wss.broadcast(JSON.stringify(data));
     });
 };
-
-// const batteryStatsBroadcast = function(stats) {
-//     if (batteryStatsRequireUpdate(stats)) {
-//         lastBatteryStats = stats;
-
-//         let data = {
-//             ts: Date.now().toString(),
-//             stats: stats,
-//             event: "battery-stats"
-//         };
-//         wss.broadcast(JSON.stringify(data));
-//     }
-// };
-
-// const bs = new BatteryStats({ stats_cb: batteryStatsBroadcast });
 
 const startPianoBar = function startPianoBar() {
     let command = "bash " + path.join(BIN_DIR, "pbctl.sh") + " start";
@@ -137,6 +129,114 @@ const stopPianoBar = function stopPianoBar() {
     }
 };
 
+const handleJsonReq = function(request, callback) {
+    let body = "";
+    request.on("data", chunk => {
+        body += chunk.toString();
+    });
+
+    request.on("end", () => {
+        try {
+            const json = JSON.parse(body);
+            return callback(null, json);
+        } catch (err) {
+            console.error("Error parsing body: " + err.message, { body });
+            return callback(err);
+        }
+    });
+
+    request.on("error", err => {
+        console.error("Error handling request", err);
+        return callbacK(err);
+    });
+};
+
+const selectCurrentStation = function selectCurrentStation(stationTitle) {
+    if (!stationTitle) {
+        currentStation = null;
+    } else if (!currentStation || currentStation.title !== stationTitle) {
+        for (let i = 0; i < currentStations.length; i++) {
+            const s = currentStations[i];
+            if (s.name === stationTitle || s.title === stationTitle) {
+                currentStation = {
+                    index: i,
+                    title: stationTitle,
+                    name: s.name
+                };
+
+                debug("Changing current station to '" + stationTitle + "'", {
+                    ...currentStation
+                });
+                break;
+            }
+        }
+    }
+};
+
+const handleSongStart = function handleSongStart(req) {
+    debug("Song Start");
+    handleJsonReq(req, (err, body) => {
+        if (!err) {
+            currentSong = {
+                title: body.title,
+                artist: body.artist,
+                album: body.album,
+                coverArt: body.coverArt,
+                rating: Number.parseInt(body.rating || 0),
+                songDuration: Number.parseInt(body.songDuration || 0),
+                songPlayed: Number.parseInt(body.songPlayed || 0),
+                station: body.station
+            };
+
+            selectCurrentStation(currentSong.station);
+        }
+    });
+};
+
+const handleSongFinish = function handleSongFinish(req) {
+    debug("Song Finish");
+    handleJsonReq(req, (err, body) => {
+        if (!err && !!currentSong) {
+            currentSong.songPlayed = Number.parseInt(body.songPlayed || 0);
+            currentSong.rating = Number.parseInt(body.rating || 0);
+        } else if (!currentSong) {
+            debug("Received Song Finish with no current song", body);
+        }
+    });
+};
+
+const handleUserLogin = function handleUserLogin(req) {
+    handleJsonReq(req, (err, body) => {
+        if (!err) {
+            debug("UserLogin", body);
+        }
+    });
+};
+
+const handlePianobarEvent = function handlePianobarEvent(req) {
+    handleJsonReq(req, (err, body) => {
+        if (!err) {
+            debug("Event", body);
+        }
+    });
+};
+
+const handleUserGetStations = function handleUserGetStations(req) {
+    handleJsonReq(req, (err, body) => {
+        if (!err) {
+            debug("Stations", body);
+        }
+    });
+};
+
+const handlePianobarError = function handlePianobarError(req) {
+    handleJsonReq(req, (err, body) => {
+        if (!err) {
+            debug("Error", body);
+        }
+    });
+};
+
 /**
  * Create HTTP server.
  */
@@ -156,30 +256,47 @@ const server = http.createServer(function(req, res) {
     res.setHeader("Cache-Control", "no-cache");
 
     if (method === "POST") {
-        if (reqUrl === "/songstart") {
-            resBody = "ok";
-            found = true;
-            broadcastUpdate();
-        } else if(reqUrl == "/bcast") {
-            resBody = "ok";
-            found = true;
+        shouldBroadcastUpdate = true;
+        switch (reqUrl) {
+            case "/songstart":
+                handleSongStart(req);
+                break;
+            case "/songfinish":
+                handleSongFinish(req);
+                break;
+            case "/userlogin":
+                handleUserLogin(req);
+                break;
+            case "/usergetstations":
+                handleUserGetStations(req);
+                break;
+            case "/pbevent":
+                shouldBroadcastUpdate = handlePianobarEvent(req);
+                break;
+            case "/pberr":
+                shouldBroadcastUpdate = false;
+                handlePianobarError(req);
+                break;
+            case "/bcast":
+                break;
+            default:
+                shouldBroadcastUpdate = false;
+                found = false;
+                resBody = "Not Found";
+                statusCode = 404;
+                break;
+        }
+
+        if (shouldBroadcastUpdate) {
             broadcastUpdate();
         }
-        // } else if (reqUrl == "/battery") {
-        //     resBody = "ok";
-        //     found = true;
-        //     batteryStats();
-        // }
     } else if (method === "GET") {
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
         if (reqUrl === "/stats") {
-            let = stats = pb.readStatsSync();
-
             found = true;
             resBody = JSON.stringify({
-                stats: stats
-                // battery: bs.getCurrentStats()
+                stats: lastStats
             });
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
         }
     }
 
@@ -209,65 +326,41 @@ wss.broadcast = function broadcast(data) {
     });
 };
 
-const statsRequireUpdate = function statsRequireUpdate(freshStats) {
-    if (!freshStats) {
-        return false;
-    }
-    if (!lastStats) {
-        return true;
-    }
-    return !(
-        freshStats.title == lastStats.title &&
-        freshStats.stopped == !lastStats.running &&
-        freshStats.paused == lastStats.paused
-    );
-};
-
-// const batteryStatsRequireUpdate = function batteryStatsRequireUpdate(s) {
-//     if (!s) {
+// const statsRequireUpdate = function statsRequireUpdate(freshStats) {
+//     if (!freshStats) {
 //         return false;
 //     }
-//     if (!lastBatteryStats) {
+//     if (!lastStats) {
 //         return true;
 //     }
 //     return !(
-//         s.has_battery == lastBatteryStats.has_battery &&
-//         s.percentage == lastBatteryStats.percentage &&
-//         s.is_charging == lastBatteryStats.is_charging
+//         freshStats.title == lastStats.title &&
+//         freshStats.stopped == !lastStats.running &&
+//         freshStats.paused == lastStats.paused
 //     );
 // };
 
-const broadcastStats = function broadcastStats() {
-    pb.running();
-    let stats = pb.readStatsSync();
-    let isRunning = !pb.stopped;
-
-    if (statsRequireUpdate(stats)) {
-        lastStats = stats;
-        lastStats.running = isRunning;
-        wss.broadcast(
-            JSON.stringify({
-                event: "current-stats",
-                stats: stats,
-                running: isRunning
-            })
-        );
-    }
-};
-
-const broadcastIntervalId = setInterval(broadcastStats, 500);
-
-// let batteryStatsIntervalId;
-// const batteryStats = function batteryStats() {
-//     // bs.getBatteryStats(function(err, stats) {
-//     //     if (err) {
-//     //         console.error(err);
-//     //         debug("Battery stats error", err);
-//     //         clearInterval(batteryStatsIntervalId);
-//     //     }
-//     // });
+// const broadcastStats = function broadcastStats() {
+//     pb.readStats((err, stats) => {
+//         if(err) {
+//             console.error('Error reading stats', err);
+//         } else {
+//             if(statsRequireUpdate(stats)) {
+//                 lastStats = stats;
+//                 lastStats.running = isRunning;
+//                 wss.broadcast(
+//                     JSON.stringify({
+//                         event: "current-stats",
+//                         stats: stats,
+//                         running: isRunning
+//                     })
+//                 );
+//             }
+//         }
+//     });
 // };
-// // batteryStatsIntervalId = setInterval(batteryStats, 500);
+
+// const broadcastIntervalId = setInterval(broadcastStats, 500);
 
 wss.on("connection", function connection(ws) {
     let guid = generateGUID();
@@ -276,19 +369,11 @@ wss.on("connection", function connection(ws) {
             event: "connected",
             id: guid,
             ts: Date.now().toString(),
-            stations: pb.readStationsSync(),
+            stations: currentStations,
+            // TODO: Stateful status
             running: pb.running()
         })
     );
-
-    // ws.send(
-    //     JSON.stringify({
-    //         event: "battery-stats",
-    //         id: guid,
-    //         ts: Date.now().toString(),
-    //         stats: lastBatteryStats
-    //     })
-    // );
 
     ws.on("open", function open() {
         ws.send(Date.now().toString(), { mask: true });
@@ -335,7 +420,7 @@ wss.on("connection", function connection(ws) {
                 }
             });
         } else if (event === "change-station") {
-            let station = json.data.stationName;
+            let station = json.stationName;
             if (!station) {
                 console.error("No station to change to", json);
                 return;

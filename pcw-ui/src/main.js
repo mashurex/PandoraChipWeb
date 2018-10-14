@@ -11,7 +11,12 @@ import {
   faThumbsDown,
   faPause,
   faFastForward,
-  faPlay
+  faPlay,
+  faToggleOff,
+  faToggleOn,
+  faExclamationCircle,
+  faPhone,
+  faPhoneSlash
 } from '@fortawesome/free-solid-svg-icons';
 
 import { client } from './axios';
@@ -19,7 +24,9 @@ import App from './App.vue';
 import router from './router';
 import store from './store';
 
-library.add(faThumbsUp, faThumbsDown, faPause, faFastForward, faPlay);
+library.add(faThumbsUp,
+  faThumbsDown, faPause, faFastForward, faPlay, faToggleOff, faToggleOn, faExclamationCircle, faPhone,
+  faPhoneSlash);
 
 Vue.prototype.$http = client;
 Vue.config.productionTip = false;

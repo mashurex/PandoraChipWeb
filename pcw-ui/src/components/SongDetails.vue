@@ -1,11 +1,6 @@
 <template>
 <div id="ui-song-details" class="song-details-container">
-    <template  v-if="isCurrentlyPlaying || isCurrentlyPaused">
-        <b-row>
-            <b-col>
-                <img class="cover-art img-fluid" :src="imgSrc" />
-            </b-col>
-        </b-row>
+    <template  v-if="isRunning">
         <b-row>
             <b-col>
                 <div><span class="song-details-title">{{ songDetails.title }}</span></div>
@@ -17,7 +12,7 @@
     <template v-else>
         <b-row>
             <b-col>
-                <h1>...</h1>
+                <h5>...</h5>
             </b-col>
         </b-row>
     </template>
@@ -33,14 +28,7 @@ import { mapGetters } from 'vuex';
 export default {
   name: 'SongDetails',
   computed: {
-    ...mapGetters(['isCurrentlyPlaying', 'isCurrentlyPaused', 'songDetails']),
-    imgSrc () {
-      if (this.songDetails.coverArt) {
-        return this.songDetails.coverArt;
-      } else {
-        return '/assets/placeholder.png';
-      }
-    }
+    ...mapGetters(['isRunning', 'isCurrentlyPlaying', 'isCurrentlyPaused', 'songDetails'])
   },
   data () {
     return {};

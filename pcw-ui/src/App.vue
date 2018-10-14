@@ -1,13 +1,29 @@
 <template>
   <div id="app" class="container-fluid">
     <header id="ui-app-header">
-        <h1>Pandora Chip Web</h1>
+      <b-row class="d-none d-lg-block">
+        <b-col>
+          <h1>Pandora Chip Web</h1>
+        </b-col>
+        <b-col>
+          <system-status />
+        </b-col>
+      </b-row>
+      <b-row class="mt-1">
+        <b-col>
+          <station-picker />
+        </b-col>
+      </b-row>
     </header>
     <section id="ui-app-section">
-        <router-view/>
+      <b-row>
+        <b-col>
+          <router-view/>
+        </b-col>
+      </b-row>
     </section>
+
     <footer id="ui-app-footer">
-        <station-picker />
     </footer>
   </div>
 </template>
@@ -21,9 +37,11 @@
 </style>
 <script>
 import StationPicker from '@/components/StationPicker.vue';
+import SystemStatus from '@/components/SystemStatus.vue';
 export default {
   components: {
-    StationPicker
+    StationPicker,
+    SystemStatus
   }
 };
 </script>
