@@ -73,6 +73,9 @@ export default new Vuex.Store({
     songDetails: set('songDetails'),
     isCurrentlyPlaying: set('isCurrentlyPlaying'),
     isCurrentlyPaused: set('isCurrentlyPaused'),
+    toggleRunning (state) {
+      state.systemStatus.isRunning = !state.systemStatus.isRunning;
+    },
     toggleSongLike (state) {
       state.songDetails.liked = !state.songDetails.liked;
     },
@@ -220,6 +223,21 @@ export default new Vuex.Store({
           resolve(true);
         } else {
           resolve(false);
+        }
+      });
+    },
+    togglePower ({ state, commit }) {
+      return new Promise((resolve, reject) => {
+        try {
+          if (state.systemStatus.isRunning) {
+            Vue.prototype.$socket.sendObj({ event: 'stop' });
+          } else {
+            Vue.prototype.$socket.sendObj({ event: 'start' });
+          }
+          commit('toggleRunning');
+          resolve(true);
+        } catch (err) {
+          reject(err);
         }
       });
     },

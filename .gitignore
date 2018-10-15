@@ -1,4 +1,10 @@
-node# Created by .ignore support plugin (hsz.mobi)
+node
+.env
+pcw.log
+pcw.pid
+current.txt
+stations.txt
+
 ### Vagrant template
 .vagrant/
 ### Node template

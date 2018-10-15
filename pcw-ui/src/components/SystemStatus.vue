@@ -48,7 +48,7 @@ export default {
   },
   methods: {
     togglePower () {
-
+      this.$store.dispatch('togglePower');
     }
   }
 };

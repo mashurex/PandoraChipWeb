@@ -20,6 +20,10 @@ debug@^4.1.0:
   dependencies:
     ms "^2.1.1"
 
+dotenv@^6.1.0:
+  version "6.1.0"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-6.1.0.tgz#9853b6ca98292acb7dec67a95018fa40bccff42c"
+
 es6-error@^3.0.1:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/es6-error/-/es6-error-3.2.0.tgz#e567cfdcb324d4e7ae5922a3700ada5de879a0ca"

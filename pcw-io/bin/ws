@@ -3,6 +3,7 @@
 /**
  * Module dependencies.
  */
+const config = require('dotenv').config();
 const debug = require("debug")("pcw");
 const http = require("http");
 const url = require("url");
@@ -13,16 +14,31 @@ const port = normalizePort(process.env.PORT || "3000");
 const PianoBar = require("../lib/PianoBar");
 const childProcess = require("child_process");
 const BIN_DIR = path.join(__dirname);
+
+// WebSocket Server reference
+let wss;
 let lastStats = null;
 let currentStations = [];
 let currentStation = null;
 let currentSong = {};
 
+const PCW_HOME = process.env.PCW_HOME || process.env.HOME || '/tmp';
+
+if(!PCW_HOME || PCW_HOME === '/tmp') {
+    console.error('No PCW_HOME is set');
+    process.exit(1);
+} else if(!fs.existsSync(PCW_HOME)) {
+    console.error('PCW_HOME directory ' + PCW_HOME + ' does not exist!');
+    process.exit(1);
+} else {
+    debug('PCW_HOME set to ' + PCW_HOME);
+}
+
 const pb = new PianoBar({
-    // FIXME:
-    cwd: "/Users/mustafa/.config/pianobar"
+    cwd: PCW_HOME
 });
 
+debug('Initializing stations...');
 pb.readStations((err, res) => {
     if (!err) {
         currentStations = res.stations;
@@ -30,8 +46,6 @@ pb.readStations((err, res) => {
         console.error("Cannot read stations", err);
     }
 });
-
-let wss;
 
 const generateGUID = function guid() {
     function s4() {
@@ -41,15 +55,6 @@ const generateGUID = function guid() {
     }
 
     return `${s4()}${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
-    // return (s4() + s4() + "-" + s4() + "-" +
-    //     s4() +
-    //     "-" +
-    //     s4() +
-    //     "-" +
-    //     s4() +
-    //     s4() +
-    //     s4()
-    // );
 };
 
 const broadcastUpdate = function broadcastUpdate() {
@@ -87,9 +92,11 @@ const startPianoBar = function startPianoBar() {
     pianobar.on("exit", function(code) {
         if (code !== 0) {
             console.error("Could not start pianobar process");
+            wss.broadcast(JSON.stringify({ event: 'pianobar-error', error: true, message: 'Could not start Pianobar process', running: false }));
         } else {
             pb.stopped = false;
             pb.paused = false;
+            wss.broadcast(JSON.stringify({ event: 'pianobar-start', running: true, stopped: false, paused: false, playing: true }));
         }
     });
 };
@@ -120,7 +127,8 @@ const stopPianoBar = function stopPianoBar() {
                 console.error("Could not stop pianobar process");
             } else {
                 pb.stopped = true;
-                pb.paused = true;
+                pb.paused = false;
+                wss.broadcast(JSON.stringify({event: 'pianobar-stop', running: false, stopped: true, paused: false, playing: false }));
             }
         });
     } catch (ex) {
@@ -217,6 +225,7 @@ const handlePianobarEvent = function handlePianobarEvent(req) {
     handleJsonReq(req, (err, body) => {
         if (!err) {
             debug("Event", body);
+            console.log('Event', body);
         }
     });
 };
@@ -225,6 +234,7 @@ const handleUserGetStations = function handleUserGetStations(req) {
     handleJsonReq(req, (err, body) => {
         if (!err) {
             debug("Stations", body);
+            console.log('Stations', body);
         }
     });
 };
@@ -232,7 +242,10 @@ const handleUserGetStations = function handleUserGetStations(req) {
 const handlePianobarError = function handlePianobarError(req) {
     handleJsonReq(req, (err, body) => {
         if (!err) {
-            debug("Error", body);
+            console.error('Pianobar Error', body);
+            debug("Pianobar Error", body);
+        } else {
+            console.error(err);
         }
     });
 };
@@ -325,42 +338,6 @@ wss.broadcast = function broadcast(data) {
         client.send(data);
     });
 };
-
-// const statsRequireUpdate = function statsRequireUpdate(freshStats) {
-//     if (!freshStats) {
-//         return false;
-//     }
-//     if (!lastStats) {
-//         return true;
-//     }
-//     return !(
-//         freshStats.title == lastStats.title &&
-//         freshStats.stopped == !lastStats.running &&
-//         freshStats.paused == lastStats.paused
-//     );
-// };
-
-// const broadcastStats = function broadcastStats() {
-//     pb.readStats((err, stats) => {
-//         if(err) {
-//             console.error('Error reading stats', err);
-//         } else {
-//             if(statsRequireUpdate(stats)) {
-//                 lastStats = stats;
-//                 lastStats.running = isRunning;
-//                 wss.broadcast(
-//                     JSON.stringify({
-//                         event: "current-stats",
-//                         stats: stats,
-//                         running: isRunning
-//                     })
-//                 );
-//             }
-//         }
-//     });
-// };
-
-// const broadcastIntervalId = setInterval(broadcastStats, 500);
 
 wss.on("connection", function connection(ws) {
     let guid = generateGUID();
@@ -521,10 +498,12 @@ process.on("SIGINT", function() {
 });
 
 process.on("uncaughtException", function(e) {
-    console.error("Shutting down due to uncaught exception...");
-    console.error(e.message);
-    console.error(e.stack);
-    debug("UncaughtException: " + e.message);
-    debug(e.stack);
-    process.abort();
+    // console.error("Shutting down due to uncaught exception...");
+    console.error('ERROR: ' + e.message);
+    if(e.stack) {
+        console.error(e.stack);
+    }
+    debug("UncaughtException: " + e.message, e.stack);
+    // debug(e.stack);
+    // process.abort();
 });
